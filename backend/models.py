@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from sqlalchemy.exc import IntegrityError
 
 
 db = SQLAlchemy()
@@ -57,3 +58,34 @@ class Staff(db.Model):
 # --- Option 2: Management as a staff_type value ---
 # Use this if Management is just a special type of Staff, with no unique fields.
 # Example: staff_type = 'management' in Staff table
+
+def create_user_in_db(clerk_user_id, email, role):
+    """
+    Adds a new User and the corresponding subclass table entry.
+    For Student: sets membership_status to 'active' by default.
+    For Staff: staff_type is None unless role is 'management', then 'management'.
+    """
+    if role not in ('student', 'staff', 'management'):
+        raise ValueError("Invalid role. Must be 'student', 'staff', or 'management'.")
+
+    user = User(clerk_user_id=clerk_user_id, email=email, role=role)
+    db.session.add(user)
+    db.session.flush()  # Assigns user.id
+
+    if role == 'student':
+        student = Student(user_id=user.id, membership_status='active')
+        db.session.add(student)
+    elif role == 'staff':
+        staff = Staff(user_id=user.id, staff_type=None)
+        db.session.add(staff)
+    elif role == 'management':
+        staff = Staff(user_id=user.id, staff_type='management')
+        db.session.add(staff)
+
+    try:
+        db.session.commit()
+    except IntegrityError as e:
+        db.session.rollback()
+        raise e
+
+    return user
