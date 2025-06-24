@@ -1,21 +1,29 @@
 import Link from "next/link";
 
+const navLinks = [
+  { href: "/", label: "Home" },
+  { href: "/my-classes", label: "My Classes" },
+  { href: "/book-classes", label: "Book Classes" },
+  { href: "/announcements", label: "Announcements" },
+  { href: "/staff-portal", label: "Staff Portal" },
+  { href: "/management", label: "Management" },
+];
+
 const Header = () => (
-  <header className="flex items-center justify-between bg-blue-200 px-8 py-4 text-gray-900">
-    <nav className="flex gap-4">
-      <Link
-        href="/sign-in"
-        className="font-medium text-gray-900 no-underline hover:underline">
-        Sign In
-      </Link>
-      <Link
-        href="/sign-up"
-        className="font-medium text-gray-900 no-underline hover:underline">
-        Sign Up
-      </Link>
-    </nav>
-    <div className="text-2xl font-bold tracking-wide">Chrome Grove</div>
-  </header>
+  <>
+    <header className="header">
+      <span className="brand">Chrome Grove</span>
+      <nav className="nav-links">
+        {navLinks.map((link) => (
+          <Link key={link.href} href={link.href} className="nav-link">
+            {link.label}
+          </Link>
+        ))}
+      </nav>
+    </header>
+    {/* Gradient bar below header */}
+    <div className="header-gradient" />
+  </>
 );
 
 export default Header;
