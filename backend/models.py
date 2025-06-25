@@ -5,6 +5,38 @@ from sqlalchemy.exc import IntegrityError
 
 db = SQLAlchemy()
 
+# Association table for many-to-many relationship between StudioClass and User (enrolled students)
+enrollments = db.Table(
+    'enrollments',
+    db.Column('user_id', db.Integer, db.ForeignKey('users.id'), primary_key=True),
+    db.Column('class_id', db.Integer, db.ForeignKey('studio_classes.id'), primary_key=True)
+)
+
+class StudioClass(db.Model):
+    __tablename__ = 'studio_classes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    class_name = db.Column(db.String(128), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    start_time = db.Column(db.DateTime, nullable=False)
+    duration = db.Column(db.Integer, nullable=False)  # Duration in minutes
+    instructor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    instructor = db.relationship('User', foreign_keys=[instructor_id])
+    max_capacity = db.Column(db.Integer, nullable=False)
+    requirements = db.Column(db.Text, nullable=True)
+    recommended_attire = db.Column(db.String(255), nullable=True)
+    recurrence_pattern = db.Column(db.String(64), nullable=True)
+
+    enrolled_students = db.relationship(
+        'User',
+        secondary=enrollments,
+        backref=db.backref('enrolled_classes', lazy='dynamic'),
+        lazy='dynamic'
+    )
+
+    def __repr__(self):
+        return f"<StudioClass id={self.id} class_name={self.class_name} instructor_id={self.instructor_id} start_time={self.start_time}>"
+
 class User(db.Model):
     __tablename__ = 'users'
 
