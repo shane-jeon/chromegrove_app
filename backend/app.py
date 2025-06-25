@@ -102,14 +102,13 @@ def list_studio_classes():
 @app.route('/api/instructors/search')
 def search_instructors():
     query = request.args.get('query', '')
-    if not query:
-        return jsonify({"instructors": []})
-    instructors = User.query.filter(
-        (User.discriminator == 'staff') & (
-            User.name.ilike(f"%{query}%") |
-            User.email.ilike(f"%{query}%")
+    q = User.query.filter(User.discriminator == 'staff')
+    if query:
+        q = q.filter(
+            (User.name.ilike(f"%{query}%")) |
+            (User.email.ilike(f"%{query}%"))
         )
-    ).all()
+    instructors = q.all()
     return jsonify({
         "instructors": [
             {"id": u.id, "name": u.name, "email": u.email}
