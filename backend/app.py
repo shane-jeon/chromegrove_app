@@ -99,5 +99,43 @@ def list_studio_classes():
         ]
     })
 
+@app.route('/api/instructors/search')
+def search_instructors():
+    query = request.args.get('query', '')
+    if not query:
+        return jsonify({"instructors": []})
+    instructors = User.query.filter(
+        (User.discriminator == 'staff') & (
+            User.name.ilike(f"%{query}%") |
+            User.email.ilike(f"%{query}%")
+        )
+    ).all()
+    return jsonify({
+        "instructors": [
+            {"id": u.id, "name": u.name, "email": u.email}
+            for u in instructors
+        ]
+    })
+
+@app.route('/api/users/by-clerk-id')
+def get_user_by_clerk_id():
+    clerk_user_id = request.args.get('clerk_user_id')
+    if not clerk_user_id:
+        return jsonify({"success": False, "error": "Missing clerk_user_id"}), 400
+    user = User.query.filter_by(clerk_user_id=clerk_user_id).first()
+    if not user:
+        return jsonify({"success": False, "error": "User not found"}), 404
+    return jsonify({
+        "success": True,
+        "user": {
+            "id": user.id,
+            "clerk_user_id": user.clerk_user_id,
+            "email": user.email,
+            "role": user.role,
+            "type": user.discriminator,
+            "name": user.name
+        }
+    })
+
 if __name__ == '__main__':
     app.run(debug=True)
