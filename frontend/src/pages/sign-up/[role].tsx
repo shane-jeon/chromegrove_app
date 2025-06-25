@@ -14,7 +14,12 @@ export default function RoleSignupPage() {
 
   return (
     <div className="mt-10 flex justify-center">
-      <SignUp path={`/signup/${role}`} routing="path" signInUrl="/sign-in" />
+      <SignUp
+        path={`/sign-up/${role}`}
+        routing="path"
+        signInUrl="/sign-in"
+        afterSignUpUrl="/role-handler"
+      />
     </div>
   );
 }
