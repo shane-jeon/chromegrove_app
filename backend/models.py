@@ -66,6 +66,38 @@ class StudioClass(db.Model):
     def __repr__(self):
         return f"<StudioClass id={self.id} class_name={self.class_name} instructor_id={self.instructor_id} start_time={self.start_time}>"
 
+    def add_student(self, student):
+        """Add a student to the class if not already enrolled."""
+        if student not in self.enrolled_students:
+            self.enrolled_students.append(student)
+            db.session.commit()
+
+    def remove_student(self, student):
+        """Remove a student from the class if enrolled."""
+        if student in self.enrolled_students:
+            self.enrolled_students.remove(student)
+            db.session.commit()
+
+    def get_roster(self):
+        """Return a list of enrolled students."""
+        return list(self.enrolled_students)
+
+    def get_class_profile(self):
+        """Return a dictionary of class details and roster."""
+        return {
+            'id': self.id,
+            'class_name': self.class_name,
+            'description': self.description,
+            'start_time': self.start_time,
+            'duration': self.duration,
+            'instructor_id': self.instructor_id,
+            'max_capacity': self.max_capacity,
+            'requirements': self.requirements,
+            'recommended_attire': self.recommended_attire,
+            'recurrence_pattern': self.recurrence_pattern,
+            'enrolled_students': [s.get_user_profile() for s in self.enrolled_students]
+        }
+
 class User(db.Model):
     __tablename__ = 'users'
 
@@ -104,11 +136,11 @@ class User(db.Model):
             raise ValueError("Invalid role. Must be 'student', 'staff', or 'management'.")
 
         if role == 'student':
-            user = Student(clerk_user_id=clerk_user_id, email=email, name=name, role=role, membership_status='active', classes=None, **kwargs)
+            user = Student(clerk_user_id=clerk_user_id, email=email, name=name, role=role, **kwargs)
         elif role == 'staff':
-            user = Staff(clerk_user_id=clerk_user_id, email=email, name=name, role=role, staff_type=None, assigned_classes=None, **kwargs)
+            user = Staff(clerk_user_id=clerk_user_id, email=email, name=name, role=role, **kwargs)
         elif role == 'management':
-            user = Management(clerk_user_id=clerk_user_id, email=email, name=name, role=role, classes_managed=None, **kwargs)
+            user = Management(clerk_user_id=clerk_user_id, email=email, name=name, role=role, **kwargs)
         db.session.add(user)
         try:
             db.session.commit()

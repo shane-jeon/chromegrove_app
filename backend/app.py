@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from models import db, create_user_in_db, User, StudioClass
+from models import db, User, StudioClass, SlidingScaleOption
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
