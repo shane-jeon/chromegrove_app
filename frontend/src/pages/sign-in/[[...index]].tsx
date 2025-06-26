@@ -45,7 +45,7 @@ export default function SignInPage() {
         path="/sign-in"
         routing="path"
         signUpUrl="/sign-up/student"
-        afterSignInUrl="/dashboard" // fallback, should not be used
+        afterSignInUrl="/sign-in"
       />
       {error && <div className="mt-4 text-red-500">{error}</div>}
     </div>
