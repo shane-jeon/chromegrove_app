@@ -119,6 +119,38 @@ const ArrowButton = styled.button`
   cursor: pointer;
 `;
 
+const TabBox = styled.div`
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(128, 90, 213, 0.07);
+  margin-bottom: 32px;
+  padding: 20px 24px 8px 24px;
+`;
+const TabHeader = styled.div`
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+`;
+const TabButton = styled.button<{ active: boolean }>`
+  background: ${({ active }) => (active ? "#805ad5" : "#eae2f8")};
+  color: ${({ active }) => (active ? "white" : "#805ad5")};
+  border: none;
+  border-radius: 6px 6px 0 0;
+  padding: 8px 20px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+`;
+const CancelButton = styled.button`
+  background: #e53e3e;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 18px;
+  font-size: 1rem;
+  cursor: pointer;
+`;
+
 function formatDateHeader(date: Date) {
   return date.toLocaleDateString(undefined, {
     weekday: "long",
@@ -145,6 +177,7 @@ export default function StudentDashboard() {
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [currentStart, setCurrentStart] = useState(new Date());
   const daysToShow = 7;
+  const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
 
   useEffect(() => {
     // Fetch classes for the next 30 days (filter in UI)
@@ -188,10 +221,76 @@ export default function StudentDashboard() {
 
   // Placeholder: get booked class IDs for this student (replace with real logic)
   const bookedClassIds: string[] = [];
+  const bookedClassDetails: ClassItem[] = classes.filter((c) =>
+    bookedClassIds.includes(c.instance_id),
+  );
+  const now = new Date();
+  const upcomingBooked = bookedClassDetails.filter(
+    (c) => new Date(c.start_time) > now,
+  );
+  const pastBooked = bookedClassDetails.filter(
+    (c) => new Date(c.start_time) <= now,
+  );
 
   return (
     <DashboardContainer>
       <ScheduleContainer>
+        {/* My Schedule Tabbed Box */}
+        <TabBox>
+          <h2 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: 8 }}>
+            My Schedule
+          </h2>
+          <TabHeader>
+            <TabButton
+              active={tab === "upcoming"}
+              onClick={() => setTab("upcoming")}>
+              Upcoming
+            </TabButton>
+            <TabButton active={tab === "past"} onClick={() => setTab("past")}>
+              Past
+            </TabButton>
+          </TabHeader>
+          <div>
+            {(tab === "upcoming" ? upcomingBooked : pastBooked).length === 0 ? (
+              <div style={{ color: "#888", margin: "12px 0 24px 0" }}>
+                No classes.
+              </div>
+            ) : (
+              (tab === "upcoming" ? upcomingBooked : pastBooked).map(
+                (c, idx, arr) => (
+                  <div key={c.instance_id}>
+                    <ClassRow full={false}>
+                      <TimeCol>
+                        {formatTimeRange(c.start_time, c.duration)}
+                      </TimeCol>
+                      <InfoCol>
+                        <div style={{ fontWeight: 600 }}>{c.class_name}</div>
+                        <div style={{ color: "#805ad5" }}>
+                          Instructor: {c.instructor_name || c.instructor_id}
+                        </div>
+                      </InfoCol>
+                      <ActionCol>
+                        {tab === "upcoming" && (
+                          <CancelButton>Cancel</CancelButton>
+                        )}
+                      </ActionCol>
+                    </ClassRow>
+                    {idx < arr.length - 1 && (
+                      <hr
+                        style={{
+                          border: 0,
+                          borderTop: "1px solid #e0e0e0",
+                          margin: 0,
+                        }}
+                      />
+                    )}
+                  </div>
+                ),
+              )
+            )}
+          </div>
+        </TabBox>
+        {/* Class Schedule */}
         <div
           style={{
             display: "flex",
