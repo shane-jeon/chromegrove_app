@@ -88,13 +88,42 @@ class User(db.Model):
             raise e
         return user
 
+class Membership(db.Model):
+    __tablename__ = 'memberships'
+    id = db.Column(db.Integer, primary_key=True)
+    membership_type = db.Column(db.String(64), nullable=False)  # e.g., 'monthly', 'annual', etc.
+    start_date = db.Column(db.DateTime, nullable=False)
+    end_date = db.Column(db.DateTime, nullable=True)
+
+    def is_active(self):
+        from datetime import datetime
+        now = datetime.utcnow()
+        return self.start_date <= now and (self.end_date is None or self.end_date >= now)
+
+    def get_membership_id(self):
+        return self.id
+
+    def get_eligibility_dates(self):
+        return {
+            'start_date': self.start_date,
+            'end_date': self.end_date
+        }
+
 class Student(User):
     __mapper_args__ = {'polymorphic_identity': 'student'}
-    membership_status = db.Column(db.String(64), nullable=True)
-    classes = db.Column(db.String(255), nullable=True)  # New field for classes (could be a comma-separated list or relationship later)
+    membership_id = db.Column(db.Integer, db.ForeignKey('memberships.id'), nullable=True)
+    membership = db.relationship('Membership', backref='students')
 
     def __repr__(self):
-        return f"<Student id={self.id} clerk_user_id={self.clerk_user_id} email={self.email} name={self.name} role={self.role} membership_status={self.membership_status} classes={self.classes}>"
+        return f"<Student id={self.id} clerk_user_id={self.clerk_user_id} email={self.email} name={self.name} role={self.role} membership_id={self.membership_id}>"
+
+    @property
+    def has_membership(self):
+        return self.membership is not None and self.membership.is_active()
+
+    @property
+    def membership_type(self):
+        return self.membership.membership_type if self.membership else None
 
 class Staff(User):
     __mapper_args__ = {'polymorphic_identity': 'staff'}
