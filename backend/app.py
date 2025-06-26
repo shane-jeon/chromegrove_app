@@ -28,18 +28,12 @@ def create_user_route():
     if not clerk_user_id or not role:
         return jsonify({"success": False, "error": "Missing required fields: clerk_user_id and role"}), 400
     try:
-        user = create_user_in_db(clerk_user_id, email, role, name)
+        user = User.create_account(clerk_user_id, email, role, name)
         # Print inserted user (now includes role-specific data)
         print("Inserted User:", user)
         return jsonify({
             "success": True,
-            "user": {
-                "id": user.id,
-                "clerk_user_id": user.clerk_user_id,
-                "email": user.email,
-                "role": user.role,
-                "type": user.discriminator
-            }
+            "user": user.get_user_profile() | {"type": user.discriminator}
         }), 201
     except Exception as e:
         print("Error creating user:", e)
@@ -94,6 +88,7 @@ def list_studio_classes():
     for c in classes:
         start = c.start_time
         recurrence = (c.recurrence_pattern or '').lower()
+        enrolled_count = c.enrolled_students.count() if hasattr(c, 'enrolled_students') else 0
         if recurrence in ['weekly', 'bi-weekly', 'monthly']:
             delta = None
             if recurrence == 'weekly':
@@ -124,6 +119,7 @@ def list_studio_classes():
                         "requirements": c.requirements,
                         "recommended_attire": c.recommended_attire,
                         "recurrence_pattern": c.recurrence_pattern,
+                        "enrolled_count": enrolled_count,
                     })
                     # Add 1 month
                     try:
@@ -146,6 +142,7 @@ def list_studio_classes():
                     "requirements": c.requirements,
                     "recommended_attire": c.recommended_attire,
                     "recurrence_pattern": c.recurrence_pattern,
+                    "enrolled_count": enrolled_count,
                 })
                 next_time += delta
         else:
@@ -162,6 +159,7 @@ def list_studio_classes():
                 "requirements": c.requirements,
                 "recommended_attire": c.recommended_attire,
                 "recurrence_pattern": c.recurrence_pattern,
+                "enrolled_count": enrolled_count,
             })
     return jsonify({"classes": expanded_classes})
 

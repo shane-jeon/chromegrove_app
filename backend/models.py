@@ -55,6 +55,39 @@ class User(db.Model):
     def __repr__(self):
         return f"<User id={self.id} clerk_user_id={self.clerk_user_id} email={self.email} name={self.name} role={self.role}>"
 
+    def get_user_id(self):
+        return self.id
+
+    def get_user_profile(self):
+        return {
+            "id": self.id,
+            "clerk_user_id": self.clerk_user_id,
+            "email": self.email,
+            "name": self.name,
+            "role": self.role,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+    @classmethod
+    def create_account(cls, clerk_user_id, email, role, name=None, **kwargs):
+        if role not in ('student', 'staff', 'management'):
+            raise ValueError("Invalid role. Must be 'student', 'staff', or 'management'.")
+
+        if role == 'student':
+            user = Student(clerk_user_id=clerk_user_id, email=email, name=name, role=role, membership_status='active', classes=None, **kwargs)
+        elif role == 'staff':
+            user = Staff(clerk_user_id=clerk_user_id, email=email, name=name, role=role, staff_type=None, assigned_classes=None, **kwargs)
+        elif role == 'management':
+            user = Management(clerk_user_id=clerk_user_id, email=email, name=name, role=role, classes_managed=None, **kwargs)
+        db.session.add(user)
+        try:
+            db.session.commit()
+        except IntegrityError as e:
+            db.session.rollback()
+            raise e
+        return user
+
 class Student(User):
     __mapper_args__ = {'polymorphic_identity': 'student'}
     membership_status = db.Column(db.String(64), nullable=True)
@@ -94,29 +127,3 @@ class Management(User):
 # --- Option 2: Management as a staff_type value ---
 # Use this if Management is just a special type of Staff, with no unique fields.
 # Example: staff_type = 'management' in Staff table
-
-def create_user_in_db(clerk_user_id, email, role, name=None):
-    """
-    Adds a new User using inheritance.
-    For Student: sets membership_status to 'active' by default.
-    For Staff: staff_type is None unless role is 'management', then 'management'.
-    """
-    if role not in ('student', 'staff', 'management'):
-        raise ValueError("Invalid role. Must be 'student', 'staff', or 'management'.")
-
-    if role == 'student':
-        user = Student(clerk_user_id=clerk_user_id, email=email, name=name, role=role, membership_status='active', classes=None)
-    elif role == 'staff':
-        user = Staff(clerk_user_id=clerk_user_id, email=email, name=name, role=role, staff_type=None, assigned_classes=None)
-    elif role == 'management':
-        user = Management(clerk_user_id=clerk_user_id, email=email, name=name, role=role, classes_managed=None)
-
-    db.session.add(user)
-
-    try:
-        db.session.commit()
-    except IntegrityError as e:
-        db.session.rollback()
-        raise e
-
-    return user
