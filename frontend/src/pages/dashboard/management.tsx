@@ -17,6 +17,7 @@ interface StudioClass {
   recommended_attire: string;
   recurrence_pattern: string;
   instance_id?: string;
+  enrolled_count?: number;
 }
 
 interface Instructor {
@@ -50,6 +51,7 @@ export default function ManagementDashboard() {
   const [loading, setLoading] = useState(false);
   const [staffList, setStaffList] = useState<Instructor[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showInstructors, setShowInstructors] = useState(false);
 
   // Fetch all classes on mount
   useEffect(() => {
@@ -190,6 +192,10 @@ export default function ManagementDashboard() {
                           | Duration: {c.duration} min
                         </div>
                         <div className="text-xs text-gray-500">
+                          Roster: {"enrolled_count" in c ? c.enrolled_count : 0}
+                          /{c.max_capacity}
+                        </div>
+                        <div className="text-xs text-gray-500">
                           Max: {c.max_capacity} | Recurrence:{" "}
                           {c.recurrence_pattern || "None"}
                         </div>
@@ -222,6 +228,47 @@ export default function ManagementDashboard() {
                 handleSelectChange={handleSelectChange}
                 handleChange={handleChange}
               />
+              {/* Instructors Button and Dropdown */}
+              <button
+                className="add-class-btn mt-4 flex items-center gap-2 rounded-full bg-purple-500 px-8 py-3 text-lg font-semibold text-white shadow transition hover:bg-purple-600"
+                style={{ background: "#a78bfa" }}
+                onClick={async () => {
+                  if (!staffList.length) {
+                    // Fetch staff if not already loaded
+                    const res = await fetch(
+                      "http://localhost:5000/api/instructors/search?query=",
+                    );
+                    const data = await res.json();
+                    setStaffList(data.instructors || []);
+                  }
+                  setShowInstructors((prev) => !prev);
+                }}
+                type="button">
+                Instructors <span className="arrow">▼</span>
+              </button>
+              {showInstructors && (
+                <div className="dropdown-form-panel dropdown-form-animate mt-2 w-full max-w-md">
+                  <div className="dropdown-form-header-bar mb-2 font-semibold text-purple-700">
+                    All Instructors
+                  </div>
+                  {staffList.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500">
+                      No instructors found.
+                    </div>
+                  ) : (
+                    <ul className="divide-y">
+                      {staffList.map((i) => (
+                        <li key={i.id} className="p-3">
+                          <div className="font-bold text-purple-800">
+                            {i.name}
+                          </div>
+                          <div className="text-sm text-gray-600">{i.email}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
