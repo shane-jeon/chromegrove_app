@@ -12,6 +12,23 @@ enrollments = db.Table(
     db.Column('class_id', db.Integer, db.ForeignKey('studio_classes.id'), primary_key=True)
 )
 
+# Association table for many-to-many relationship between Staff and StudioClass (assigned classes)
+staff_assignments = db.Table(
+    'staff_assignments',
+    db.Column('staff_id', db.Integer, db.ForeignKey('users.id'), primary_key=True),
+    db.Column('class_id', db.Integer, db.ForeignKey('studio_classes.id'), primary_key=True)
+)
+
+# Association table for many-to-many relationship between Management and StudioClass (managed classes)
+management_assignments = db.Table(
+    'management_assignments',
+    db.Column('management_id', db.Integer, db.ForeignKey('users.id'), primary_key=True),
+    db.Column('class_id', db.Integer, db.ForeignKey('studio_classes.id'), primary_key=True)
+)
+
+# Rename enrollments to student_classes for clarity (keep the old name for migration compatibility)
+student_classes = enrollments
+
 class StudioClass(db.Model):
     __tablename__ = 'studio_classes'
 
@@ -29,8 +46,20 @@ class StudioClass(db.Model):
 
     enrolled_students = db.relationship(
         'User',
-        secondary=enrollments,
+        secondary=student_classes,
         backref=db.backref('enrolled_classes', lazy='dynamic'),
+        lazy='dynamic'
+    )
+    assigned_staff = db.relationship(
+        'User',
+        secondary=staff_assignments,
+        backref=db.backref('assigned_classes', lazy='dynamic'),
+        lazy='dynamic'
+    )
+    managers = db.relationship(
+        'User',
+        secondary=management_assignments,
+        backref=db.backref('classes_managed', lazy='dynamic'),
         lazy='dynamic'
     )
 
@@ -125,20 +154,32 @@ class Student(User):
     def membership_type(self):
         return self.membership.membership_type if self.membership else None
 
+    @property
+    def upcoming_classes(self):
+        from datetime import datetime
+        now = datetime.utcnow()
+        return [c for c in self.enrolled_classes if c.start_time > now]
+
+    @property
+    def past_classes(self):
+        from datetime import datetime
+        now = datetime.utcnow()
+        return [c for c in self.enrolled_classes if c.start_time <= now]
+
 class Staff(User):
     __mapper_args__ = {'polymorphic_identity': 'staff'}
     staff_type = db.Column(db.String(64), nullable=True)  # e.g., 'instructor', 'admin', 'management'
-    assigned_classes = db.Column(db.String(255), nullable=True)  # New field for assigned classes
+    # assigned_classes relationship via staff_assignments
 
     def __repr__(self):
-        return f"<Staff id={self.id} clerk_user_id={self.clerk_user_id} email={self.email} name={self.name} role={self.role} staff_type={self.staff_type} assigned_classes={self.assigned_classes}>"
+        return f"<Staff id={self.id} clerk_user_id={self.clerk_user_id} email={self.email} name={self.name} role={self.role} staff_type={self.staff_type}>"
 
 class Management(User):
     __mapper_args__ = {'polymorphic_identity': 'management'}
-    classes_managed = db.Column(db.String(255), nullable=True)  # New field for classes managed (could be a comma-separated list or relationship later)
+    # classes_managed relationship via management_assignments
 
     def __repr__(self):
-        return f"<Management id={self.id} clerk_user_id={self.clerk_user_id} email={self.email} name={self.name} role={self.role} classes_managed={self.classes_managed}>"
+        return f"<Management id={self.id} clerk_user_id={self.clerk_user_id} email={self.email} name={self.name} role={self.role}>"
 
 # --- Option 1: Management as a separate table ---
 # Use this if Management has unique fields or logic not shared with Staff.
