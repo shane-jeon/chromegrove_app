@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from models import db, create_user_in_db, User, StudioClass
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
@@ -48,10 +49,15 @@ def create_user_route():
 def create_studio_class():
     data = request.get_json()
     try:
+        # Always parse start_time as a datetime object
+        try:
+            start_time = datetime.fromisoformat(data['start_time'])
+        except Exception:
+            return jsonify({"success": False, "error": "Invalid start_time format. Must be ISO 8601 (YYYY-MM-DDTHH:MM:SS)"}), 400
         studio_class = StudioClass(
             class_name=data['class_name'],
             description=data.get('description'),
-            start_time=data['start_time'],
+            start_time=start_time,
             duration=data['duration'],
             instructor_id=data['instructor_id'],
             max_capacity=data['max_capacity'],
@@ -65,7 +71,7 @@ def create_studio_class():
             "id": studio_class.id,
             "class_name": studio_class.class_name,
             "description": studio_class.description,
-            "start_time": str(studio_class.start_time),
+            "start_time": studio_class.start_time.isoformat(),
             "duration": studio_class.duration,
             "instructor_id": studio_class.instructor_id,
             "max_capacity": studio_class.max_capacity,
@@ -81,23 +87,83 @@ def create_studio_class():
 @app.route('/api/studio-classes/list', methods=['GET'])
 def list_studio_classes():
     classes = StudioClass.query.all()
-    return jsonify({
-        "classes": [
-            {
-                "id": c.id,
+    expanded_classes = []
+    now = datetime.now()
+    three_months_later = now + timedelta(days=90)
+
+    for c in classes:
+        start = c.start_time
+        recurrence = (c.recurrence_pattern or '').lower()
+        if recurrence in ['weekly', 'bi-weekly', 'monthly']:
+            delta = None
+            if recurrence == 'weekly':
+                delta = timedelta(weeks=1)
+            elif recurrence == 'bi-weekly':
+                delta = timedelta(weeks=2)
+            elif recurrence == 'monthly':
+                # For monthly, add 1 month at a time (handle month overflow)
+                def add_month(dt):
+                    month = dt.month + 1
+                    year = dt.year
+                    if month > 12:
+                        month = 1
+                        year += 1
+                    day = min(dt.day, [31,29 if year%4==0 and (year%100!=0 or year%400==0) else 28,31,30,31,30,31,31,30,31,30,31][month-1])
+                    return dt.replace(year=year, month=month, day=day)
+                next_time = start
+                while next_time <= three_months_later:
+                    expanded_classes.append({
+                        "instance_id": f"{c.id}_{next_time.strftime('%Y%m%d%H%M')}",
+                        "template_id": c.id,
+                        "class_name": c.class_name,
+                        "description": c.description,
+                        "start_time": str(next_time),
+                        "duration": c.duration,
+                        "instructor_id": c.instructor_id,
+                        "max_capacity": c.max_capacity,
+                        "requirements": c.requirements,
+                        "recommended_attire": c.recommended_attire,
+                        "recurrence_pattern": c.recurrence_pattern,
+                    })
+                    # Add 1 month
+                    try:
+                        next_time = add_month(next_time)
+                    except Exception:
+                        break
+                continue
+            # For weekly/bi-weekly
+            next_time = start
+            while next_time <= three_months_later:
+                expanded_classes.append({
+                    "instance_id": f"{c.id}_{next_time.strftime('%Y%m%d%H%M')}",
+                    "template_id": c.id,
+                    "class_name": c.class_name,
+                    "description": c.description,
+                    "start_time": str(next_time),
+                    "duration": c.duration,
+                    "instructor_id": c.instructor_id,
+                    "max_capacity": c.max_capacity,
+                    "requirements": c.requirements,
+                    "recommended_attire": c.recommended_attire,
+                    "recurrence_pattern": c.recurrence_pattern,
+                })
+                next_time += delta
+        else:
+            # Pop-up or non-recurring: just one instance
+            expanded_classes.append({
+                "instance_id": f"{c.id}_{start.strftime('%Y%m%d%H%M')}",
+                "template_id": c.id,
                 "class_name": c.class_name,
                 "description": c.description,
-                "start_time": str(c.start_time),
+                "start_time": str(start),
                 "duration": c.duration,
                 "instructor_id": c.instructor_id,
                 "max_capacity": c.max_capacity,
                 "requirements": c.requirements,
                 "recommended_attire": c.recommended_attire,
                 "recurrence_pattern": c.recurrence_pattern,
-            }
-            for c in classes
-        ]
-    })
+            })
+    return jsonify({"classes": expanded_classes})
 
 @app.route('/api/instructors/search')
 def search_instructors():

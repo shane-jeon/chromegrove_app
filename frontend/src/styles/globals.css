@@ -44,3 +44,140 @@ body {
   height: 32px;
   background: linear-gradient(90deg, #e9d5ff 0%, #c4b5fd 100%);
 }
+
+/* Dashboard Management Styles */
+.schedule-box {
+  min-width: 260px;
+  max-width: 400px;
+  min-height: 350px;
+  box-shadow: 0 2px 8px rgba(80, 80, 120, 0.04);
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 420px;
+}
+
+.calendar-btn {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  cursor: pointer;
+  color: #a78bfa;
+  transition: background 0.2s;
+}
+
+.add-class-btn {
+  padding: 0.75rem 2.5rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #fff;
+  background: #a78bfa;
+  border: none;
+  outline: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background 0.2s;
+  margin-bottom: 0.5rem;
+}
+.add-class-btn .arrow {
+  display: inline-block;
+  transition: transform 0.3s;
+}
+.add-class-btn.open .arrow {
+  transform: rotate(180deg);
+}
+
+.dropdown-form-panel {
+  width: 100%;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 8px rgba(80, 80, 120, 0.06);
+  margin-top: 0.5rem;
+  overflow: hidden;
+}
+.dropdown-form-animate {
+  max-height: 1000px;
+  opacity: 1;
+  transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s;
+}
+
+@media (max-width: 768px) {
+  .schedule-box {
+    margin-bottom: 1.5rem;
+  }
+  .add-class-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Calendar custom styles */
+.calendar-selected-day {
+  background: rgba(167, 139, 250, 0.18) !important;
+  border-radius: 50% !important;
+}
+.calendar-dot {
+  width: 7px;
+  height: 7px;
+  background: #a78bfa;
+  border-radius: 50%;
+  margin: 0 auto;
+  margin-top: 2px;
+}
+
+/* Remove red color from react-calendar weekends */
+.react-calendar__month-view__days__day--weekend {
+  color: inherit !important;
+}
+
+/* Form field styling */
+.form-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-weight: 500;
+  color: #444;
+}
+.form-group {
+  margin-bottom: 1.5rem;
+}
+.form-input,
+.form-textarea,
+.form-select {
+  width: 100%;
+  padding: 0.6rem 0.9rem;
+  border: 1.5px solid #d1d5db;
+  border-radius: 0.5rem;
+  background: #fff;
+  font-size: 1rem;
+  color: #222;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.form-textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.form-close-btn {
+  background: #fff;
+  color: #e11d48;
+  border: none;
+  border-radius: 50%;
+  font-size: 2rem;
+  font-weight: bold;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  margin: 0.5rem 0.5rem 0 0;
+}
+.form-close-btn:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+}

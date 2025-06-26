@@ -1,4 +1,9 @@
 import { useEffect, useState } from "react";
+import AddClassDropdownForm, {
+  type AddClassForm,
+} from "../../components/AddClassDropdownForm";
+import Calendar from "react-calendar";
+import "react-calendar/dist/Calendar.css";
 
 interface StudioClass {
   id: number;
@@ -11,6 +16,7 @@ interface StudioClass {
   requirements: string;
   recommended_attire: string;
   recurrence_pattern: string;
+  instance_id?: string;
 }
 
 interface Instructor {
@@ -19,10 +25,18 @@ interface Instructor {
   email: string;
 }
 
+function isSameDay(date1: Date, date2: Date) {
+  return (
+    date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate()
+  );
+}
+
 export default function ManagementDashboard() {
-  const [showModal, setShowModal] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
   const [classes, setClasses] = useState<StudioClass[]>([]);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<AddClassForm>({
     class_name: "",
     description: "",
     start_time: "",
@@ -35,6 +49,7 @@ export default function ManagementDashboard() {
   });
   const [loading, setLoading] = useState(false);
   const [staffList, setStaffList] = useState<Instructor[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
   // Fetch all classes on mount
   useEffect(() => {
@@ -43,14 +58,14 @@ export default function ManagementDashboard() {
       .then((data) => setClasses(data.classes || []));
   }, []);
 
-  // Fetch all staff when modal opens
+  // Fetch all staff when dropdown opens
   useEffect(() => {
-    if (showModal) {
+    if (showDropdown) {
       fetch("http://localhost:5000/api/instructors/search?query=")
         .then((res) => res.json())
         .then((data) => setStaffList(data.instructors || []));
     }
-  }, [showModal]);
+  }, [showDropdown]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -59,17 +74,26 @@ export default function ManagementDashboard() {
   };
 
   const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setForm({ ...form, instructor_id: e.target.value });
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    // Ensure start_time is always a full ISO string (with seconds)
+    let startTime = form.start_time;
+    if (startTime && startTime.length === 16) {
+      // 'YYYY-MM-DDTHH:MM'
+      startTime = startTime + ":00";
+    }
+    // Optionally, convert to UTC if needed:
+    // const isoString = new Date(startTime).toISOString();
     const res = await fetch("http://localhost:5000/api/studio-classes/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...form,
+        start_time: startTime,
         duration: Number(form.duration),
         max_capacity: Number(form.max_capacity),
         instructor_id: Number(form.instructor_id),
@@ -79,7 +103,7 @@ export default function ManagementDashboard() {
     setLoading(false);
     if (data.success && data.studio_class) {
       setClasses((prev) => [...prev, data.studio_class]);
-      setShowModal(false);
+      setShowDropdown(false);
       setForm({
         class_name: "",
         description: "",
@@ -96,164 +120,110 @@ export default function ManagementDashboard() {
     }
   };
 
+  // Filtering logic for selected day
+  const classesForSelectedDay = classes.filter((c) =>
+    isSameDay(new Date(c.start_time), selectedDate),
+  );
+
   return (
     <div className="flex min-h-screen flex-col items-center bg-gray-50 px-4 py-10">
-      <div className="w-full max-w-3xl">
+      <div className="mx-auto w-full max-w-5xl">
         <h1 className="mb-8 text-center text-3xl font-bold text-purple-700">
           Management Dashboard
         </h1>
-        <div className="mb-6 flex justify-end">
-          <button
-            className="rounded-full bg-purple-500 px-6 py-2 text-lg font-semibold text-white shadow transition hover:bg-purple-600"
-            style={{ background: "#a78bfa" }}
-            onClick={() => setShowModal(true)}>
-            + Add Class
-          </button>
-        </div>
-
-        {/* Modal Overlay */}
-        {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center">
-            {/* Overlay */}
-            <div
-              className="absolute inset-0 z-40 bg-black bg-opacity-50"
-              onClick={() => setShowModal(false)}
-            />
-            {/* Modal Window */}
-            <div className="animate-fade-in relative z-50 flex w-full max-w-md flex-col items-center rounded-2xl bg-white p-8 shadow-2xl">
-              <button
-                className="absolute right-3 top-3 text-2xl font-bold text-gray-400 hover:text-gray-700"
-                onClick={() => setShowModal(false)}
-                aria-label="Close">
-                &times;
-              </button>
-              <h2 className="mb-4 text-2xl font-semibold text-purple-700">
-                Add New Class
-              </h2>
-              <form
-                onSubmit={handleSubmit}
-                className="flex w-full flex-col gap-4">
-                <input
-                  name="class_name"
-                  value={form.class_name}
-                  onChange={handleChange}
-                  placeholder="Class Name"
-                  className="rounded border p-2"
-                  required
-                />
-                <textarea
-                  name="description"
-                  value={form.description}
-                  onChange={handleChange}
-                  placeholder="Description"
-                  className="rounded border p-2"
-                />
-                <input
-                  name="start_time"
-                  value={form.start_time}
-                  onChange={handleChange}
-                  placeholder="Start Time (YYYY-MM-DDTHH:MM)"
-                  className="rounded border p-2"
-                  required
-                  type="datetime-local"
-                />
-                <input
-                  name="duration"
-                  value={form.duration}
-                  onChange={handleChange}
-                  placeholder="Duration (minutes)"
-                  className="rounded border p-2"
-                  type="number"
-                  min={1}
-                  required
-                />
-                {/* Instructor Dropdown */}
-                <div>
-                  <label className="mb-1 block font-medium">Instructor</label>
-                  <select
-                    name="instructor_id"
-                    value={form.instructor_id}
-                    onChange={handleSelectChange}
-                    className="w-full rounded border p-2"
-                    required>
-                    <option value="">Select Instructor</option>
-                    {staffList.map((i: Instructor) => (
-                      <option key={i.id} value={i.id}>
-                        {i.name} ({i.email})
-                      </option>
+        <div
+          className="flex flex-row items-stretch justify-center gap-8"
+          style={{ minHeight: "500px" }}>
+          {/* Left Column: Schedule, vertically centered */}
+          <div className="flex flex-1 flex-col items-center justify-center">
+            <div className="schedule-box mx-auto rounded-lg border border-gray-200 bg-white p-4">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-purple-700">
+                  Schedule
+                </h2>
+              </div>
+              <Calendar
+                value={selectedDate}
+                onChange={(date) => setSelectedDate(date as Date)}
+                tileClassName={({ date, view }) =>
+                  view === "month" && isSameDay(date, selectedDate)
+                    ? "calendar-selected-day"
+                    : undefined
+                }
+                tileContent={({ date, view }) => {
+                  if (
+                    view === "month" &&
+                    classes.some((c) => isSameDay(new Date(c.start_time), date))
+                  ) {
+                    return <div className="calendar-dot" />;
+                  }
+                  return null;
+                }}
+                showNeighboringMonth={false}
+              />
+              <div className="mt-4">
+                <h3 className="text-md mb-2 font-semibold text-purple-700">
+                  Classes on {selectedDate.toLocaleDateString()}
+                </h3>
+                {classesForSelectedDay.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500">
+                    No classes found.
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {classesForSelectedDay.map((c) => (
+                      <div
+                        key={c.instance_id || c.id}
+                        className="rounded px-2 py-3 transition hover:bg-purple-50">
+                        <div className="font-bold text-purple-800">
+                          {c.class_name}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {c.description}
+                        </div>
+                        <div className="mt-1 text-xs text-gray-500">
+                          Start:{" "}
+                          {new Date(c.start_time).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}{" "}
+                          | Duration: {c.duration} min
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Max: {c.max_capacity} | Recurrence:{" "}
+                          {c.recurrence_pattern || "None"}
+                        </div>
+                      </div>
                     ))}
-                  </select>
-                </div>
-                <input
-                  name="max_capacity"
-                  value={form.max_capacity}
-                  onChange={handleChange}
-                  placeholder="Max Capacity"
-                  className="rounded border p-2"
-                  type="number"
-                  min={1}
-                  required
-                />
-                <textarea
-                  name="requirements"
-                  value={form.requirements}
-                  onChange={handleChange}
-                  placeholder="Requirements"
-                  className="rounded border p-2"
-                />
-                <input
-                  name="recommended_attire"
-                  value={form.recommended_attire}
-                  onChange={handleChange}
-                  placeholder="Recommended Attire"
-                  className="rounded border p-2"
-                />
-                <input
-                  name="recurrence_pattern"
-                  value={form.recurrence_pattern}
-                  onChange={handleChange}
-                  placeholder="Recurrence Pattern"
-                  className="rounded border p-2"
-                />
-                <button
-                  type="submit"
-                  className="mt-2 rounded-full bg-purple-500 py-2 text-lg font-semibold text-white transition hover:bg-purple-600"
-                  style={{ background: "#a78bfa" }}
-                  disabled={loading}>
-                  {loading ? "Saving..." : "Create Class"}
-                </button>
-              </form>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        )}
-
-        <h2 className="mb-4 mt-10 text-xl font-semibold text-purple-700">
-          All Classes
-        </h2>
-        <div className="divide-y rounded-lg bg-white shadow">
-          {classes.length === 0 && (
-            <div className="p-6 text-center text-gray-500">No classes yet.</div>
-          )}
-          {classes.map((c) => (
-            <div
-              key={c.id}
-              className="flex flex-col gap-2 p-4 transition hover:bg-purple-50 md:flex-row md:items-center md:justify-between">
-              <div>
-                <div className="text-lg font-bold text-purple-800">
-                  {c.class_name}
-                </div>
-                <div className="text-sm text-gray-600">{c.description}</div>
-                <div className="mt-1 text-xs text-gray-500">
-                  Start: {c.start_time} | Duration: {c.duration} min |
-                  Instructor ID: {c.instructor_id}
-                </div>
-              </div>
-              <div className="mt-2 text-sm text-gray-700 md:mt-0">
-                Max: {c.max_capacity} | Recurrence:{" "}
-                {c.recurrence_pattern || "None"}
-              </div>
+          {/* Right Column: Add Class, button and form centered horizontally, start at top */}
+          <div className="flex flex-1 flex-col items-center justify-start">
+            <div className="flex w-full flex-col items-center">
+              <button
+                className={`add-class-btn mb-2 flex items-center rounded-full bg-purple-500 px-8 py-3 text-lg font-semibold text-white shadow transition hover:bg-purple-600 gap-2${
+                  showDropdown ? " open" : ""
+                }`}
+                style={{ background: "#a78bfa" }}
+                onClick={() => setShowDropdown((prev) => !prev)}
+                type="button">
+                + Add Class <span className="arrow">▼</span>
+              </button>
+              <AddClassDropdownForm
+                show={showDropdown}
+                onClose={() => setShowDropdown(false)}
+                onSubmit={handleSubmit}
+                form={form}
+                staffList={staffList}
+                loading={loading}
+                handleSelectChange={handleSelectChange}
+                handleChange={handleChange}
+              />
             </div>
-          ))}
+          </div>
         </div>
       </div>
     </div>
