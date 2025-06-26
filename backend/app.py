@@ -204,5 +204,49 @@ def get_user_by_clerk_id():
         }
     })
 
+@app.route('/api/studio-classes/book', methods=['POST'])
+def book_studio_class():
+    data = request.get_json()
+    student_id = data.get('student_id')
+    clerk_user_id = data.get('clerk_user_id')
+    studio_class_id = data.get('studio_class_id')
+    instance_id = data.get('instance_id')
+
+    # Find student
+    student = None
+    if student_id:
+        student = User.query.filter_by(id=student_id, discriminator='student').first()
+    elif clerk_user_id:
+        student = User.query.filter_by(clerk_user_id=clerk_user_id, discriminator='student').first()
+    if not student:
+        return jsonify({"success": False, "error": "Student not found"}), 404
+
+    # Find class
+    studio_class = None
+    if studio_class_id:
+        studio_class = StudioClass.query.filter_by(id=studio_class_id).first()
+    elif instance_id:
+        # instance_id format: "{class_id}_{yyyymmddHHMM}", so split by '_'
+        try:
+            class_id = int(instance_id.split('_')[0])
+            studio_class = StudioClass.query.filter_by(id=class_id).first()
+        except Exception:
+            return jsonify({"success": False, "error": "Invalid instance_id format"}), 400
+    if not studio_class:
+        return jsonify({"success": False, "error": "Class not found"}), 404
+
+    # Check if class is full
+    if studio_class.enrolled_students.count() >= studio_class.max_capacity:
+        return jsonify({"success": False, "error": "Class is full"}), 400
+
+    # Check if already booked
+    if student in studio_class.enrolled_students:
+        return jsonify({"success": False, "error": "Already booked for this class"}), 400
+
+    # Enroll student
+    studio_class.enrolled_students.append(student)
+    db.session.commit()
+    return jsonify({"success": True, "message": "Class booked successfully"})
+
 if __name__ == '__main__':
     app.run(debug=True)
