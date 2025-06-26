@@ -1,15 +1,6 @@
-import Link from "next/link";
 import { useUser, UserButton } from "@clerk/nextjs";
 import { useState } from "react";
 import { useRouter } from "next/router";
-
-const navLinks = [
-  { href: "/", label: "Home" },
-  { href: "/my-classes", label: "My Classes" },
-  { href: "/book-classes", label: "Book Classes" },
-  { href: "/announcements", label: "Announcements" },
-  { href: "/staff-portal", label: "Staff Portal" },
-];
 
 const Header = () => {
   const { isSignedIn } = useUser();
@@ -27,46 +18,43 @@ const Header = () => {
 
   return (
     <>
-      <header className="header">
-        <span className="brand">Chrome Grove</span>
-        <nav className="nav-links">
-          {navLinks.map((link) => (
-            <Link key={link.href} href={link.href} className="nav-link">
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-        {!isSignedIn && (
-          <div style={{ marginLeft: "auto", position: "relative" }}>
-            <button
-              className="flex items-center rounded bg-purple-500 px-4 py-2 text-white"
-              onClick={handleSignIn}
-              onMouseEnter={() => setDropdownOpen(true)}
-              onMouseLeave={() => setTimeout(() => setDropdownOpen(false), 200)}
-              style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              Sign In
-              <span style={{ marginLeft: 4, fontSize: 12 }}>▼</span>
-            </button>
-            {dropdownOpen && (
-              <div
-                className="absolute right-0 z-50 mt-2 rounded border bg-white shadow-lg"
+      <header className="header flex items-center justify-between bg-white px-8 py-4 shadow-sm">
+        <span
+          className="brand text-2xl font-bold tracking-wide"
+          style={{ letterSpacing: 1 }}>
+          Chrome Grove
+        </span>
+        <div className="flex items-center gap-4">
+          {!isSignedIn && (
+            <div style={{ position: "relative" }}>
+              <button
+                className="flex items-center rounded bg-purple-500 px-4 py-2 font-semibold text-white"
+                onClick={handleSignIn}
                 onMouseEnter={() => setDropdownOpen(true)}
-                onMouseLeave={() => setDropdownOpen(false)}
-                style={{ minWidth: 120 }}>
-                <button
-                  className="block w-full px-4 py-2 text-left hover:bg-purple-100"
-                  onClick={handleSignUp}>
-                  Sign Up
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-        {isSignedIn && (
-          <div style={{ marginLeft: "auto" }}>
-            <UserButton afterSignOutUrl="/sign-in" />
-          </div>
-        )}
+                onMouseLeave={() =>
+                  setTimeout(() => setDropdownOpen(false), 200)
+                }
+                style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                Sign In
+                <span style={{ marginLeft: 4, fontSize: 12 }}>▼</span>
+              </button>
+              {dropdownOpen && (
+                <div
+                  className="absolute right-0 z-50 mt-2 rounded border bg-white shadow-lg"
+                  onMouseEnter={() => setDropdownOpen(true)}
+                  onMouseLeave={() => setDropdownOpen(false)}
+                  style={{ minWidth: 120 }}>
+                  <button
+                    className="block w-full px-4 py-2 text-left hover:bg-purple-100"
+                    onClick={handleSignUp}>
+                    Sign Up
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+          {isSignedIn && <UserButton afterSignOutUrl="/" />}
+        </div>
       </header>
       {/* Gradient bar below header */}
       <div className="header-gradient" />
