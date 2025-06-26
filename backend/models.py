@@ -229,3 +229,48 @@ class Announcement(db.Model):
             'author_id': self.author_id,
             'board_id': self.board_id
         }
+
+class SlidingScaleOption(db.Model):
+    __tablename__ = 'sliding_scale_options'
+    id = db.Column(db.Integer, primary_key=True)
+    tier_name = db.Column(db.String(64), nullable=False)
+    price_min = db.Column(db.Float, nullable=False)
+    price_max = db.Column(db.Float, nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    payments = db.relationship('Payment', backref='sliding_scale_option', lazy='dynamic')
+
+    def get_tier_name(self):
+        return self.tier_name
+
+    def get_price_min(self):
+        return self.price_min
+
+    def get_price_max(self):
+        return self.price_max
+
+    def get_description(self):
+        return self.description
+
+class Payment(db.Model):
+    __tablename__ = 'payments'
+    id = db.Column(db.Integer, primary_key=True)
+    amount = db.Column(db.Float, nullable=False)
+    date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    status = db.Column(db.String(32), nullable=False, default='pending')
+    student_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    sliding_scale_option_id = db.Column(db.Integer, db.ForeignKey('sliding_scale_options.id'), nullable=False)
+
+    student = db.relationship('Student', backref='payments')
+
+    def get_payment_id(self):
+        return self.id
+
+    def get_payment_info(self):
+        return {
+            'id': self.id,
+            'amount': self.amount,
+            'date': self.date,
+            'status': self.status,
+            'student_id': self.student_id,
+            'sliding_scale_option_id': self.sliding_scale_option_id
+        }
