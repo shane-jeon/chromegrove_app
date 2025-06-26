@@ -89,6 +89,7 @@ def list_studio_classes():
         start = c.start_time
         recurrence = (c.recurrence_pattern or '').lower()
         enrolled_count = c.enrolled_students.count() if hasattr(c, 'enrolled_students') else 0
+        instructor_name = c.instructor.name if c.instructor and hasattr(c.instructor, 'name') else str(c.instructor_id)
         if recurrence in ['weekly', 'bi-weekly', 'monthly']:
             delta = None
             if recurrence == 'weekly':
@@ -115,6 +116,7 @@ def list_studio_classes():
                         "start_time": str(next_time),
                         "duration": c.duration,
                         "instructor_id": c.instructor_id,
+                        "instructor_name": instructor_name,
                         "max_capacity": c.max_capacity,
                         "requirements": c.requirements,
                         "recommended_attire": c.recommended_attire,
@@ -138,6 +140,7 @@ def list_studio_classes():
                     "start_time": str(next_time),
                     "duration": c.duration,
                     "instructor_id": c.instructor_id,
+                    "instructor_name": instructor_name,
                     "max_capacity": c.max_capacity,
                     "requirements": c.requirements,
                     "recommended_attire": c.recommended_attire,
@@ -155,6 +158,7 @@ def list_studio_classes():
                 "start_time": str(start),
                 "duration": c.duration,
                 "instructor_id": c.instructor_id,
+                "instructor_name": instructor_name,
                 "max_capacity": c.max_capacity,
                 "requirements": c.requirements,
                 "recommended_attire": c.recommended_attire,
