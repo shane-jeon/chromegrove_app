@@ -197,3 +197,35 @@ class Management(User):
 # --- Option 2: Management as a staff_type value ---
 # Use this if Management is just a special type of Staff, with no unique fields.
 # Example: staff_type = 'management' in Staff table
+
+class BulletinBoard(db.Model):
+    __tablename__ = 'bulletin_boards'
+    id = db.Column(db.Integer, primary_key=True)
+    board_type = db.Column(db.String(32), nullable=False)  # 'student' or 'staff'
+    announcements = db.relationship('Announcement', backref='bulletin_board', lazy='dynamic')
+
+    def get_announcements(self):
+        return self.announcements.order_by(Announcement.date_created.desc()).all()
+
+class Announcement(db.Model):
+    __tablename__ = 'announcements'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    date_created = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # Management user
+    board_id = db.Column(db.Integer, db.ForeignKey('bulletin_boards.id'), nullable=False)
+
+    def post_announcement(self):
+        db.session.add(self)
+        db.session.commit()
+
+    def get_info(self):
+        return {
+            'id': self.id,
+            'title': self.title,
+            'body': self.body,
+            'date_created': self.date_created,
+            'author_id': self.author_id,
+            'board_id': self.board_id
+        }
