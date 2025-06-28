@@ -1,6 +1,5 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from flask_migrate import Migrate
 from models import db, User, StudioClass, SlidingScaleOption, Payment, ClassInstance, ClassEnrollment, Announcement, BulletinBoard
 from datetime import datetime, timedelta
 import os
@@ -15,17 +14,20 @@ from services.payment_service import PaymentService
 # Import controllers
 from controllers.user_controller import UserController
 from controllers.class_controller import ClassController
+from controllers.payment_controller import PaymentController
 
 # Import DTOs
 from dtos.user_dto import UserDTO
 from dtos.class_dto import StudioClassDTO, ClassInstanceDTO
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
+# Use absolute path to database
+db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance', 'db.sqlite3')
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev')
 
 db.init_app(app)
-migrate = Migrate(app, db)
 CORS(app)
 
 # Load environment variables from .env
@@ -34,6 +36,11 @@ load_dotenv()
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 
+# Create controller instances
+user_controller = UserController()
+class_controller = ClassController()
+payment_controller = PaymentController()
+
 @app.route('/api/ping')
 def ping():
     return jsonify({"message": "pong"})
@@ -41,83 +48,73 @@ def ping():
 # User routes using UserController
 @app.route('/api/users/create', methods=['POST'])
 def create_user_route():
-    return UserController.create_user()
+    return user_controller.create_user()
 
 @app.route('/api/users/by-clerk-id')
 def get_user_by_clerk_id():
-    return UserController.get_user_by_clerk_id()
+    return user_controller.get_user_by_clerk_id()
 
 @app.route('/api/users', methods=['GET'])
 def get_all_users():
-    return UserController.get_all_users()
+    return user_controller.get_all_users()
 
 @app.route('/api/instructors/search')
 def search_instructors():
-    return UserController.search_instructors()
+    return user_controller.search_instructors()
 
 # Class routes using ClassController
 @app.route('/api/studio-classes/create', methods=['POST'])
 def create_studio_class():
-    return ClassController.create_studio_class()
+    return class_controller.create_studio_class()
 
 @app.route('/api/studio-classes/list', methods=['GET'])
 def list_studio_classes():
-    return ClassController.list_studio_classes()
+    return class_controller.get_future_instances()
 
 @app.route('/api/studio-classes/templates', methods=['GET'])
 def get_studio_class_templates():
-    return ClassController.get_class_templates()
+    return class_controller.get_all_classes()
 
 @app.route('/api/studio-classes/book', methods=['POST'])
 def book_studio_class():
-    return ClassController.book_class()
+    return class_controller.book_class()
 
 @app.route('/api/students/enrolled-classes')
 def get_student_enrolled_classes():
-    return ClassController.get_student_enrolled_classes()
+    return class_controller.get_student_enrolled_classes()
 
 @app.route('/api/students/cancel-enrollment', methods=['POST'])
 def cancel_enrollment():
-    return ClassController.cancel_enrollment()
+    return class_controller.cancel_enrollment()
 
 @app.route('/api/studio-classes/<int:class_id>/staff', methods=['GET'])
 def get_class_staff(class_id):
-    return ClassController.get_class_staff(class_id)
+    return class_controller.get_class_staff(class_id)
 
 @app.route('/api/studio-classes/<int:class_id>/staff', methods=['POST'])
 def add_class_staff(class_id):
-    return ClassController.add_class_staff(class_id)
+    return class_controller.add_class_staff(class_id)
 
 @app.route('/api/studio-classes/<int:class_id>/staff/<int:staff_id>', methods=['DELETE'])
 def remove_class_staff(class_id, staff_id):
-    return ClassController.remove_class_staff(class_id, staff_id)
+    return class_controller.remove_class_staff(class_id, staff_id)
 
 @app.route('/api/studio-classes/<int:class_id>/instructor', methods=['PUT'])
 def change_class_instructor(class_id):
-    return ClassController.change_class_instructor(class_id)
+    return class_controller.change_class_instructor(class_id)
 
-# Payment routes using PaymentService
-@app.route('/api/sliding-scale-options')
+# Payment routes using PaymentController
+@app.route('/api/sliding-scale-options', methods=['GET'])
 def get_sliding_scale_options():
-    try:
-        options = PaymentService.get_sliding_scale_options()
-        return jsonify({
-            "success": True,
-            "options": [
-                {
-                    "id": option.id,
-                    "tier_name": option.tier_name,
-                    "price_min": option.price_min,
-                    "price_max": option.price_max,
-                    "description": option.description,
-                    "category": option.category,
-                    "stripe_price_id": option.stripe_price_id
-                }
-                for option in options
-            ]
-        })
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+    return payment_controller.get_sliding_scale_options()
+
+@app.route('/api/sliding-scale-options/all', methods=['GET'])
+def get_all_sliding_scale_options():
+    return payment_controller.get_all_sliding_scale_options()
+
+@app.route('/api/sliding-scale-options', methods=['POST'])
+def create_sliding_scale_option():
+    return payment_controller.create_sliding_scale_option()
 
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout_session():
@@ -139,11 +136,11 @@ def create_checkout_session():
         # Find student
         student = None
         if student_id:
-            student = UserService.get_user_by_id(student_id)
+            student = user_controller.user_service.get_user_by_id(student_id)
             if student and student.discriminator != 'student':
                 student = None
         elif clerk_user_id:
-            student = UserService.get_user_by_clerk_id(clerk_user_id)
+            student = user_controller.user_service.get_user_by_clerk_id(clerk_user_id)
             if student and student.discriminator != 'student':
                 student = None
         
