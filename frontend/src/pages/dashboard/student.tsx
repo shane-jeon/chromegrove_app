@@ -853,6 +853,8 @@ export default function StudentDashboard() {
 
   const verifyPaymentAndRefreshData = async (sessionId: string) => {
     try {
+      console.log("🔄 Verifying payment for session:", sessionId);
+
       // Verify payment with backend
       const response = await fetch(
         `http://localhost:5000/verify-payment?session_id=${sessionId}`,
@@ -865,9 +867,22 @@ export default function StudentDashboard() {
       );
 
       const data = await response.json();
+      console.log("📊 Payment verification response:", data);
 
       if (data.success) {
+        console.log(
+          "✅ Payment verified successfully, waiting for backend processing...",
+        );
+
+        // Wait a bit for backend to process the enrollment
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        console.log("🔄 Refreshing enrolled classes...");
         // Refresh enrolled classes data
+        await refreshEnrolledClasses();
+
+        // Wait a bit more and refresh again to ensure we have the latest data
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         await refreshEnrolledClasses();
 
         // Auto-hide success modal after 4 seconds
@@ -876,11 +891,11 @@ export default function StudentDashboard() {
           setSuccessLoading(false);
         }, 4000);
       } else {
-        console.error("Payment verification failed:", data.error);
+        console.error("❌ Payment verification failed:", data.error);
         setSuccessLoading(false);
       }
     } catch (error) {
-      console.error("Error verifying payment:", error);
+      console.error("❌ Error verifying payment:", error);
       setSuccessLoading(false);
     }
   };
@@ -897,12 +912,24 @@ export default function StudentDashboard() {
 
       if (data.success) {
         setEnrolledClasses(data.classes || []);
+        console.log(
+          "✅ Enrolled classes refreshed:",
+          data.classes?.length || 0,
+          "classes",
+        );
+      } else {
+        console.error("❌ Failed to refresh enrolled classes:", data.error);
       }
     } catch (error) {
       console.error("Error refreshing enrolled classes:", error);
     } finally {
       setRefreshingData(false);
     }
+  };
+
+  // Manual refresh function
+  const handleManualRefresh = async () => {
+    await refreshEnrolledClasses();
   };
 
   useEffect(() => {
@@ -947,29 +974,45 @@ export default function StudentDashboard() {
   // Fetch current user and enrolled classes when clerk user is available
   useEffect(() => {
     if (user) {
+      console.log("🔄 Fetching user data for clerk_user_id:", user.id);
       fetch(
         `http://localhost:5000/api/users/by-clerk-id?clerk_user_id=${user.id}`,
       )
         .then((res) => res.json())
         .then((data) => {
+          console.log("📊 User data response:", data);
           if (data.success) {
             setCurrentUser(data.user);
+            console.log("✅ User set, fetching enrolled classes...");
             // Fetch enrolled classes for this student
             fetch(
               `http://localhost:5000/api/students/enrolled-classes?clerk_user_id=${user.id}`,
             )
               .then((res) => res.json())
               .then((enrolledData) => {
+                console.log("📊 Enrolled classes response:", enrolledData);
                 if (enrolledData.success) {
                   setEnrolledClasses(enrolledData.classes || []);
+                  console.log(
+                    "✅ Enrolled classes set:",
+                    enrolledData.classes?.length || 0,
+                    "classes",
+                  );
+                } else {
+                  console.error(
+                    "❌ Failed to fetch enrolled classes:",
+                    enrolledData.error,
+                  );
                 }
               })
-              .catch((error) =>
-                console.error("Error fetching enrolled classes:", error),
-              );
+              .catch((error) => {
+                console.error("❌ Error fetching enrolled classes:", error);
+              });
+          } else {
+            console.error("❌ Failed to fetch user:", data.error);
           }
         })
-        .catch((error) => console.error("Error fetching user:", error));
+        .catch((error) => console.error("❌ Error fetching user:", error));
     }
   }, [user]);
 
@@ -995,7 +1038,7 @@ export default function StudentDashboard() {
 
   // Upcoming Classes: Only enrolled classes that haven't happened yet
   const upcomingClasses = enrolledClasses
-    .filter((c) => new Date(c.start_time) > now && c.is_enrolled)
+    .filter((c) => new Date(c.start_time) > now)
     .sort(
       (a, b) =>
         new Date(a.start_time).getTime() - new Date(b.start_time).getTime(),
@@ -1003,11 +1046,25 @@ export default function StudentDashboard() {
 
   // Past Classes: Only enrolled classes that have already happened
   const pastClasses = enrolledClasses
-    .filter((c) => new Date(c.start_time) <= now && c.is_enrolled)
+    .filter((c) => new Date(c.start_time) <= now)
     .sort(
       (a, b) =>
         new Date(b.start_time).getTime() - new Date(a.start_time).getTime(),
     );
+
+  // Debug logging
+  console.log("🔍 Data Debug:", {
+    totalEnrolled: enrolledClasses.length,
+    upcomingCount: upcomingClasses.length,
+    pastCount: pastClasses.length,
+    now: now.toISOString(),
+    enrolledClasses: enrolledClasses.map((c) => ({
+      instance_id: c.instance_id,
+      class_name: c.class_name,
+      start_time: c.start_time,
+      is_future: new Date(c.start_time) > now,
+    })),
+  });
 
   // Enhance classes with placeholder data
   const enhancedStudioClasses = studioClasses.map((c) => ({
@@ -1267,6 +1324,22 @@ export default function StudentDashboard() {
                   onClick={() => setActiveTab("past")}>
                   Past Classes
                 </TabButton>
+                <button
+                  onClick={handleManualRefresh}
+                  disabled={refreshingData}
+                  style={{
+                    marginLeft: "auto",
+                    padding: "8px 16px",
+                    background: "#805ad5",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: refreshingData ? "not-allowed" : "pointer",
+                    fontSize: "12px",
+                    opacity: refreshingData ? 0.6 : 1,
+                  }}>
+                  {refreshingData ? "Refreshing..." : "🔄 Refresh"}
+                </button>
               </TabHeader>
               <TabContent>{getTabContent()}</TabContent>
             </TabContainer>
