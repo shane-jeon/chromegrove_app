@@ -820,23 +820,17 @@ export default function StudentDashboard() {
     const sessionId = urlParams.get("session_id");
 
     if (paymentStatus === "success" && sessionId) {
-      // Check if this is a page refresh by looking for existing enrollments
-      // If user is already enrolled in classes, this is likely a refresh
-      const hasExistingEnrollments = enrolledClasses.length > 0;
+      setSuccessLoading(true);
+      setShowSuccessModal(true);
 
-      if (!hasExistingEnrollments) {
-        setSuccessLoading(true);
-        setShowSuccessModal(true);
+      // Verify payment and refresh data
+      verifyPaymentAndRefreshData(sessionId);
 
-        // Verify payment and refresh data
-        verifyPaymentAndRefreshData(sessionId);
-      }
-
-      // Clean up URL parameters regardless
+      // Clean up URL parameters
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
     }
-  }, [enrolledClasses.length]);
+  }, []);
 
   const verifyPaymentAndRefreshData = async (sessionId: string) => {
     try {
@@ -1014,7 +1008,7 @@ export default function StudentDashboard() {
           },
           body: JSON.stringify({
             student_id: currentUser.id,
-            sliding_scale_option_id: selectedOption?.id || null,
+            option_id: selectedOption?.id || null,
             class_name: selectedClass.class_name,
             instance_id: selectedClass.instance_id,
             custom_amount: selectedAmount,

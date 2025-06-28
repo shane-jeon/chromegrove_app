@@ -4,6 +4,7 @@ from typing import List, Dict, Any, Optional, Tuple
 import stripe
 import os
 from repositories.payment_repository import PaymentRepository
+from services.class_service import ClassService
 
 
 class PaymentService:
@@ -127,16 +128,30 @@ class PaymentService:
     def verify_payment(session_id: str) -> Optional[Payment]:
         """Verify a payment using Stripe session ID"""
         try:
+            print(f"[verify_payment] Called with session_id={session_id}")
             session = stripe.checkout.Session.retrieve(session_id)
+            print(f"[verify_payment] Stripe session: {session}")
             if session.payment_status == 'paid':
                 payment_id = int(session.metadata.get('payment_id'))
                 payment = db.session.get(Payment, payment_id)
+                print(f"[verify_payment] Payment found: {payment}")
                 if payment:
                     payment.status = 'completed'
                     db.session.commit()
+                    # Enroll the student in the class instance if not already enrolled
+                    print(f"[verify_payment] Attempting enrollment: student_id={payment.student_id}, instance_id={payment.instance_id}, payment_id={payment.id}")
+                    if payment.student_id and payment.instance_id:
+                        try:
+                            result = ClassService().book_class(payment.student_id, payment.instance_id, payment.id)
+                            print(f"[verify_payment] Enrollment result: {result}")
+                        except Exception as e:
+                            print(f"[verify_payment] Enrollment error: {e}")
+                    else:
+                        print(f"[verify_payment] Missing student_id or instance_id for enrollment")
                     return payment
             return None
         except Exception as e:
+            print(f"[verify_payment] Exception: {e}")
             raise e
     
     @staticmethod

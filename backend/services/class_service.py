@@ -91,7 +91,7 @@ class ClassService:
             if not instance:
                 raise ValueError("Class instance not found")
             
-            if instance.current_enrollment >= instance.max_capacity:
+            if instance.is_full:
                 raise ValueError("Class is full")
             
             # Check if student is already enrolled

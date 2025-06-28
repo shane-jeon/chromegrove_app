@@ -160,7 +160,7 @@ def create_checkout_session():
         )
         
         # Create Stripe checkout session
-        success_url = data.get('success_url', 'http://localhost:3000/dashboard/student?success=true')
+        success_url = data.get('success_url', f'http://localhost:3000/dashboard/student?payment=success&session_id={{CHECKOUT_SESSION_ID}}')
         cancel_url = data.get('cancel_url', 'http://localhost:3000/dashboard/student?canceled=true')
         
         session = PaymentService.create_stripe_checkout_session(payment.id, success_url, cancel_url)
