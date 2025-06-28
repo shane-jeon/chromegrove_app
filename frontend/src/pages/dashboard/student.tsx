@@ -840,6 +840,13 @@ export default function StudentDashboard() {
   const [successLoading, setSuccessLoading] = useState(false);
   const [refreshingData, setRefreshingData] = useState(false);
 
+  // Track if component is mounted to fix initial styling
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   // Check for payment success on component mount
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -988,166 +995,6 @@ export default function StudentDashboard() {
         .catch((error) => console.error("Error fetching user:", error));
     }
   }, [user]);
-
-  const handleBookClassClick = (c: ClassItem) => {
-    if (!currentUser) {
-      alert("Please sign in to book a class.");
-      return;
-    }
-
-    if (loadingSlidingScale) {
-      alert(
-        "Payment options are still loading. Please wait a moment and try again.",
-      );
-      return;
-    }
-
-    if (slidingScaleOptions.length === 0) {
-      alert("No payment options available. Please try again later.");
-      return;
-    }
-
-    setSelectedClass(c);
-    setSelectedOption(null);
-    setSelectedAmount(0);
-    setPaymentError("");
-    setShowPaymentModal(true);
-  };
-
-  const handlePaymentContinue = async () => {
-    if (!currentUser || !selectedClass) {
-      return;
-    }
-
-    // Validate selection
-    if (!selectedOption) {
-      setPaymentError("Please select a payment tier");
-      return;
-    }
-
-    if (selectedAmount <= 0) {
-      setPaymentError("Please select a valid payment amount");
-      return;
-    }
-
-    setPaymentLoading(true);
-    setPaymentError("");
-
-    try {
-      const response = await fetch(
-        "http://localhost:5000/create-checkout-session",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            student_id: currentUser.id,
-            option_id: selectedOption?.id || null,
-            class_name: selectedClass.class_name,
-            instance_id: selectedClass.instance_id,
-            custom_amount: selectedAmount,
-          }),
-        },
-      );
-
-      const data = await response.json();
-
-      if (data.success && data.url) {
-        window.location.href = data.url;
-      } else {
-        setPaymentError(
-          "Failed to create checkout session: " +
-            (data.error || "Unknown error"),
-        );
-      }
-    } catch (error) {
-      console.error("Error creating checkout session:", error);
-      setPaymentError("Failed to create checkout session. Please try again.");
-    } finally {
-      setPaymentLoading(false);
-    }
-  };
-
-  const handleTierSelect = (option: SlidingScaleOption) => {
-    setSelectedOption(option);
-    // Start at the middle of the price range instead of max
-    const middlePrice = Math.round((option.price_min + option.price_max) / 2);
-    setSelectedAmount(middlePrice);
-    setPaymentError("");
-  };
-
-  const handleAmountChange = (amount: number) => {
-    setSelectedAmount(amount);
-    setPaymentError("");
-  };
-
-  const isPaymentValid = () => {
-    return selectedOption && selectedAmount > 0;
-  };
-
-  const handleCancelClass = async (c: ClassItem) => {
-    if (!user) {
-      alert("Please log in to cancel classes.");
-      return;
-    }
-
-    // Show cancel confirmation modal
-    setClassToCancel(c);
-    setShowCancelModal(true);
-  };
-
-  const handleConfirmCancel = async () => {
-    if (!classToCancel || !user) {
-      setShowCancelModal(false);
-      setClassToCancel(null);
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        "http://localhost:5000/api/students/cancel-enrollment",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            clerk_user_id: user.id,
-            instance_id: classToCancel.instance_id,
-          }),
-        },
-      );
-
-      const data = await response.json();
-
-      if (data.success) {
-        // Show success message briefly
-        setSuccessLoading(true);
-        setShowCancelModal(false);
-        setClassToCancel(null);
-
-        // Refresh the enrolled classes data
-        await refreshEnrolledClasses();
-
-        // Show success modal
-        setShowSuccessModal(true);
-        setTimeout(() => {
-          setShowSuccessModal(false);
-          setSuccessLoading(false);
-        }, 2000);
-      } else {
-        alert(`Error cancelling class: ${data.error}`);
-        setShowCancelModal(false);
-        setClassToCancel(null);
-      }
-    } catch (error) {
-      console.error("Error cancelling class:", error);
-      alert("Failed to cancel class. Please try again.");
-      setShowCancelModal(false);
-      setClassToCancel(null);
-    }
-  };
 
   // Filter and sort classes based on active tab
   const now = new Date();
@@ -1313,31 +1160,204 @@ export default function StudentDashboard() {
     }
   };
 
+  const handleBookClassClick = (c: ClassItem) => {
+    if (!currentUser) {
+      alert("Please sign in to book a class.");
+      return;
+    }
+
+    if (loadingSlidingScale) {
+      alert(
+        "Payment options are still loading. Please wait a moment and try again.",
+      );
+      return;
+    }
+
+    if (slidingScaleOptions.length === 0) {
+      alert("No payment options available. Please try again later.");
+      return;
+    }
+
+    setSelectedClass(c);
+    setSelectedOption(null);
+    setSelectedAmount(0);
+    setPaymentError("");
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentContinue = async () => {
+    if (!currentUser || !selectedClass) {
+      return;
+    }
+
+    // Validate selection
+    if (!selectedOption) {
+      setPaymentError("Please select a payment tier");
+      return;
+    }
+
+    if (selectedAmount <= 0) {
+      setPaymentError("Please select a valid payment amount");
+      return;
+    }
+
+    setPaymentLoading(true);
+    setPaymentError("");
+
+    try {
+      const response = await fetch(
+        "http://localhost:5000/create-checkout-session",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            student_id: currentUser.id,
+            option_id: selectedOption?.id || null,
+            class_name: selectedClass.class_name,
+            instance_id: selectedClass.instance_id,
+            custom_amount: selectedAmount,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (data.success && data.url) {
+        window.location.href = data.url;
+      } else {
+        setPaymentError(
+          "Failed to create checkout session: " +
+            (data.error || "Unknown error"),
+        );
+      }
+    } catch (error) {
+      console.error("Error creating checkout session:", error);
+      setPaymentError("Failed to create checkout session. Please try again.");
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  const handleTierSelect = (option: SlidingScaleOption) => {
+    setSelectedOption(option);
+    // Start at the middle of the price range instead of max
+    const middlePrice = Math.round((option.price_min + option.price_max) / 2);
+    setSelectedAmount(middlePrice);
+    setPaymentError("");
+  };
+
+  const handleAmountChange = (amount: number) => {
+    setSelectedAmount(amount);
+    setPaymentError("");
+  };
+
+  const isPaymentValid = () => {
+    return selectedOption && selectedAmount > 0;
+  };
+
+  const handleCancelClass = async (c: ClassItem) => {
+    if (!user) {
+      alert("Please log in to cancel classes.");
+      return;
+    }
+
+    // Show cancel confirmation modal
+    setClassToCancel(c);
+    setShowCancelModal(true);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!classToCancel || !user) {
+      setShowCancelModal(false);
+      setClassToCancel(null);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/students/cancel-enrollment",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            clerk_user_id: user.id,
+            instance_id: classToCancel.instance_id,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Show success message briefly
+        setSuccessLoading(true);
+        setShowCancelModal(false);
+        setClassToCancel(null);
+
+        // Refresh the enrolled classes data
+        await refreshEnrolledClasses();
+
+        // Show success modal
+        setShowSuccessModal(true);
+        setTimeout(() => {
+          setShowSuccessModal(false);
+          setSuccessLoading(false);
+        }, 2000);
+      } else {
+        alert(`Error cancelling class: ${data.error}`);
+        setShowCancelModal(false);
+        setClassToCancel(null);
+      }
+    } catch (error) {
+      console.error("Error cancelling class:", error);
+      alert("Failed to cancel class. Please try again.");
+      setShowCancelModal(false);
+      setClassToCancel(null);
+    }
+  };
+
   return (
     <>
       <DashboardContainer>
         {/* Left Side - Class Schedule */}
         <ScheduleContainer>
-          <TabContainer>
-            <TabHeader>
-              <TabButton
-                active={activeTab === "studio"}
-                onClick={() => setActiveTab("studio")}>
-                Studio Schedule
-              </TabButton>
-              <TabButton
-                active={activeTab === "upcoming"}
-                onClick={() => setActiveTab("upcoming")}>
-                Upcoming Classes
-              </TabButton>
-              <TabButton
-                active={activeTab === "past"}
-                onClick={() => setActiveTab("past")}>
-                Past Classes
-              </TabButton>
-            </TabHeader>
-            <TabContent>{getTabContent()}</TabContent>
-          </TabContainer>
+          {isMounted ? (
+            <TabContainer>
+              <TabHeader>
+                <TabButton
+                  active={activeTab === "studio"}
+                  onClick={() => setActiveTab("studio")}>
+                  Studio Schedule
+                </TabButton>
+                <TabButton
+                  active={activeTab === "upcoming"}
+                  onClick={() => setActiveTab("upcoming")}>
+                  Upcoming Classes
+                </TabButton>
+                <TabButton
+                  active={activeTab === "past"}
+                  onClick={() => setActiveTab("past")}>
+                  Past Classes
+                </TabButton>
+              </TabHeader>
+              <TabContent>{getTabContent()}</TabContent>
+            </TabContainer>
+          ) : (
+            <div
+              style={{
+                background: "white",
+                borderRadius: "12px",
+                padding: "24px",
+                textAlign: "center",
+                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+              }}>
+              <div style={{ color: "#718096" }}>Loading...</div>
+            </div>
+          )}
         </ScheduleContainer>
 
         {/* Right Side - Bulletin Board */}
