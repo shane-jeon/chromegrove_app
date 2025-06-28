@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from models import StudioClass, ClassInstance, User
 from repositories.class_repository import StudioClassRepository, ClassInstanceRepository
 from repositories.user_repository import UserRepository
+import calendar
 
 class ClassService:
     """Service layer for class-related business logic"""
@@ -39,16 +40,27 @@ class ClassService:
         if not instructor:
             raise ValueError("Instructor not found")
         
+        # Convert start_time to datetime
+        start_time_str = class_data['start_time']
+        if isinstance(start_time_str, str):
+            try:
+                start_time = datetime.strptime(start_time_str, "%Y-%m-%dT%H:%M:%S")
+            except ValueError:
+                start_time = datetime.strptime(start_time_str, "%Y-%m-%dT%H:%M")
+        else:
+            start_time = start_time_str
+        
         # Create studio class
         studio_class = StudioClass(
-            name=class_data['name'],
+            class_name=class_data['class_name'],
             description=class_data.get('description', ''),
-            start_time=class_data['start_time'],
+            start_time=start_time,
             duration=class_data['duration'],
             max_capacity=class_data['max_capacity'],
             instructor_id=class_data['instructor_id'],
-            recurrence_pattern=class_data.get('recurrence_pattern', 'one-time'),
-            creator_id=class_data.get('creator_id')
+            requirements=class_data.get('requirements', ''),
+            recommended_attire=class_data.get('recommended_attire', ''),
+            recurrence_pattern=class_data.get('recurrence_pattern', 'one-time')
         )
         
         # Save to database
@@ -223,11 +235,7 @@ class ClassService:
             while current_time <= three_months_later:
                 print(f"[DEBUG] Creating monthly instance at {current_time}")
                 ClassService._create_single_instance(studio_class, current_time)
-                # Move to next month
-                if current_time.month == 12:
-                    current_time = current_time.replace(year=current_time.year + 1, month=1)
-                else:
-                    current_time = current_time.replace(month=current_time.month + 1)
+                current_time = ClassService.add_months(current_time, 1)
         else:
             # One-time classes
             print(f"[DEBUG] Creating one-time instance at {start}")
@@ -245,19 +253,24 @@ class ClassService:
         # Create class instance
         class_instance = ClassInstance(
             instance_id=instance_id,
-            template_id=studio_class.id,
-            class_name=studio_class.name,
+            class_id=studio_class.id,
             start_time=start_time,
             end_time=end_time,
-            instructor_name=studio_class.instructor.name,
-            max_capacity=studio_class.max_capacity,
-            current_enrollment=0
+            max_capacity=studio_class.max_capacity
         )
         
         # Save to database
         from models import db
         db.session.add(class_instance)
         db.session.commit()
+
+    @staticmethod
+    def add_months(dt, months):
+        month = dt.month - 1 + months
+        year = dt.year + month // 12
+        month = month % 12 + 1
+        day = min(dt.day, calendar.monthrange(year, month)[1])
+        return dt.replace(year=year, month=month, day=day)
 
 
 # Import at the end to avoid circular imports

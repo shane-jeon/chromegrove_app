@@ -819,9 +819,17 @@ export default function StudentDashboard() {
     const paymentStatus = urlParams.get("payment");
     const sessionId = urlParams.get("session_id");
 
-    if (paymentStatus === "success" && sessionId) {
+    // Only show modal if this session_id hasn't been processed in this session
+    if (
+      paymentStatus === "success" &&
+      sessionId &&
+      !sessionStorage.getItem(`payment_processed_${sessionId}`)
+    ) {
       setSuccessLoading(true);
       setShowSuccessModal(true);
+
+      // Mark as processed
+      sessionStorage.setItem(`payment_processed_${sessionId}`, "true");
 
       // Verify payment and refresh data
       verifyPaymentAndRefreshData(sessionId);
