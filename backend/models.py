@@ -274,6 +274,7 @@ class SlidingScaleOption(db.Model):
     description = db.Column(db.Text, nullable=True)
     category = db.Column(db.String(64), nullable=False)
     stripe_price_id = db.Column(db.String(255), nullable=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
 
     def get_tier_name(self):
         return self.tier_name
