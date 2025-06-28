@@ -213,33 +213,66 @@ class ClassService:
         
         start = studio_class.start_time
         recurrence = (studio_class.recurrence_pattern or '').lower()
-        print(f"[DEBUG] Creating instances for class_id={studio_class.id}, recurrence={recurrence}, start={start}, until={three_months_later}")
+        print(f"[DEBUG] Creating instances for class_id={studio_class.id}, recurrence='{recurrence}', start={start}, until={three_months_later}")
+        print(f"[DEBUG] Recurrence pattern type: {type(recurrence)}, length: {len(recurrence)}")
+        
+        instances_created = []
         
         if recurrence == 'weekly':
             # Weekly classes
             current_time = start
             while current_time <= three_months_later:
                 print(f"[DEBUG] Creating weekly instance at {current_time}")
-                ClassService._create_single_instance(studio_class, current_time)
+                instance = ClassService._create_single_instance(studio_class, current_time)
+                instances_created.append(instance)
                 current_time += timedelta(weeks=1)
         elif recurrence == 'bi-weekly':
             # Bi-weekly classes
             current_time = start
             while current_time <= three_months_later:
                 print(f"[DEBUG] Creating bi-weekly instance at {current_time}")
-                ClassService._create_single_instance(studio_class, current_time)
+                instance = ClassService._create_single_instance(studio_class, current_time)
+                instances_created.append(instance)
                 current_time += timedelta(weeks=2)
         elif recurrence == 'monthly':
-            # Monthly classes
+            # Monthly classes - same day of week each month
             current_time = start
+            instance_count = 0
+            
+            # Get the day of week (0=Monday, 6=Sunday) and week number in month
+            original_weekday = current_time.weekday()  # 0=Monday, 6=Sunday
+            original_day = current_time.day
+            week_number = (original_day - 1) // 7 + 1  # Which week of the month (1-5)
+            
+            print(f"[DEBUG] Monthly: Original date {current_time}, weekday={original_weekday}, week_number={week_number}")
+            
             while current_time <= three_months_later:
-                print(f"[DEBUG] Creating monthly instance at {current_time}")
-                ClassService._create_single_instance(studio_class, current_time)
-                current_time = ClassService.add_months(current_time, 1)
+                print(f"[DEBUG] Creating monthly instance {instance_count + 1} at {current_time}")
+                instance = ClassService._create_single_instance(studio_class, current_time)
+                instances_created.append(instance)
+                
+                # Move to next month, same week and day of week
+                current_time = ClassService.add_months_same_weekday(current_time, 1, original_weekday, week_number)
+                instance_count += 1
+            print(f"[DEBUG] Monthly: Created {instance_count} instances")
+        elif recurrence == 'pop-up':
+            # Pop-up events (one-time)
+            print(f"[DEBUG] Creating pop-up event instance at {start}")
+            instance = ClassService._create_single_instance(studio_class, start)
+            instances_created.append(instance)
         else:
-            # One-time classes
-            print(f"[DEBUG] Creating one-time instance at {start}")
-            ClassService._create_single_instance(studio_class, start)
+            # One-time classes (default)
+            print(f"[DEBUG] Creating one-time instance at {start} (recurrence: '{recurrence}')")
+            instance = ClassService._create_single_instance(studio_class, start)
+            instances_created.append(instance)
+        
+        # Commit all instances at once
+        if instances_created:
+            from models import db
+            db.session.commit()
+            print(f"[DEBUG] Successfully created {len(instances_created)} instances")
+        else:
+            print(f"[DEBUG] No instances were created!")
     
     @staticmethod
     def _create_single_instance(studio_class: StudioClass, start_time: datetime):
@@ -259,10 +292,11 @@ class ClassService:
             max_capacity=studio_class.max_capacity
         )
         
-        # Save to database
+        # Add to session but don't commit yet
         from models import db
         db.session.add(class_instance)
-        db.session.commit()
+        
+        return class_instance
 
     @staticmethod
     def add_months(dt, months):
@@ -271,6 +305,35 @@ class ClassService:
         month = month % 12 + 1
         day = min(dt.day, calendar.monthrange(year, month)[1])
         return dt.replace(year=year, month=month, day=day)
+
+    @staticmethod
+    def add_months_same_weekday(dt, months, weekday, week_number):
+        """Add months while preserving the same day of week and week number in month"""
+        # Calculate target year and month
+        month = dt.month - 1 + months
+        year = dt.year + month // 12
+        month = month % 12 + 1
+        
+        # Calculate the target day based on week number and weekday
+        # week_number: 1=first week, 2=second week, etc.
+        # weekday: 0=Monday, 1=Tuesday, ..., 6=Sunday
+        
+        # Start with the first day of the target month
+        target_date = dt.replace(year=year, month=month, day=1)
+        
+        # Find the first occurrence of the target weekday in the month
+        while target_date.weekday() != weekday:
+            target_date = target_date + timedelta(days=1)
+        
+        # Add weeks to get to the desired week number
+        target_date = target_date + timedelta(weeks=week_number - 1)
+        
+        # Check if the resulting date is still in the same month
+        if target_date.month != month:
+            # If we went too far, go back one week
+            target_date = target_date - timedelta(weeks=1)
+        
+        return target_date
 
 
 # Import at the end to avoid circular imports
