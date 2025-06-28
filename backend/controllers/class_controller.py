@@ -9,15 +9,18 @@ from typing import Dict, Any
 class ClassController:
     """Controller for class-related HTTP requests"""
     
-    @staticmethod
-    def create_studio_class():
+    def __init__(self):
+        self.class_service = ClassService()
+        self.user_service = UserService()
+    
+    def create_studio_class(self):
         """Handle studio class creation request"""
         try:
             data = request.get_json()
             if not data:
                 return jsonify({"success": False, "error": "Missing JSON body"}), 400
             
-            studio_class = ClassService.create_studio_class(data)
+            studio_class = self.class_service.create_studio_class(data)
             class_dto = StudioClassDTO.from_studio_class(studio_class)
             
             return jsonify({
@@ -25,22 +28,19 @@ class ClassController:
                 "studio_class": class_dto.to_dict()
             }), 201
             
-        except ValueError as e:
-            return jsonify({"success": False, "error": str(e)}), 400
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
     
-    @staticmethod
-    def list_studio_classes():
+    def list_studio_classes(self):
         """Handle list studio classes request"""
         try:
-            instances = ClassService.get_upcoming_classes()
+            instances = self.class_service.get_upcoming_classes()
             
             # Get studio classes for context
             studio_classes = {}
             for instance in instances:
                 if instance.class_id not in studio_classes:
-                    studio_class = ClassService.get_class_by_id(instance.class_id)
+                    studio_class = self.class_service.get_class_by_id(instance.class_id)
                     if studio_class:
                         studio_classes[instance.class_id] = studio_class
             
@@ -59,11 +59,10 @@ class ClassController:
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
     
-    @staticmethod
-    def get_class_templates():
+    def get_class_templates(self):
         """Handle get class templates request"""
         try:
-            templates = ClassService.get_class_templates()
+            templates = self.class_service.get_class_templates()
             template_dtos = StudioClassDTO.from_studio_class_list(templates)
             
             return jsonify({
@@ -74,8 +73,7 @@ class ClassController:
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
     
-    @staticmethod
-    def book_class():
+    def book_class(self):
         """Handle class booking request"""
         try:
             data = request.get_json()
@@ -92,11 +90,11 @@ class ClassController:
             # Find student
             student = None
             if student_id:
-                student = UserService.get_user_by_id(student_id)
+                student = self.user_service.get_user_by_id(student_id)
                 if student and student.discriminator != 'student':
                     student = None
             elif clerk_user_id:
-                student = UserService.get_user_by_clerk_id(clerk_user_id)
+                student = self.user_service.get_user_by_clerk_id(clerk_user_id)
                 if student and student.discriminator != 'student':
                     student = None
             
@@ -104,20 +102,17 @@ class ClassController:
                 return jsonify({"success": False, "error": "Student not found"}), 404
             
             # Book the class
-            ClassService.book_class(student.id, instance_id)
+            self.class_service.book_class(student.id, instance_id)
             
             return jsonify({
                 "success": True,
                 "message": "Class booked successfully"
             })
             
-        except ValueError as e:
-            return jsonify({"success": False, "error": str(e)}), 400
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
     
-    @staticmethod
-    def get_student_enrolled_classes():
+    def get_student_enrolled_classes(self):
         """Handle get student enrolled classes request"""
         try:
             student_id = request.args.get('student_id')
@@ -126,11 +121,11 @@ class ClassController:
             # Find student
             student = None
             if student_id:
-                student = UserService.get_user_by_id(student_id)
+                student = self.user_service.get_user_by_id(student_id)
                 if student and student.discriminator != 'student':
                     student = None
             elif clerk_user_id:
-                student = UserService.get_user_by_clerk_id(clerk_user_id)
+                student = self.user_service.get_user_by_clerk_id(clerk_user_id)
                 if student and student.discriminator != 'student':
                     student = None
             
@@ -138,7 +133,7 @@ class ClassController:
                 return jsonify({"success": False, "error": "Student not found"}), 404
             
             # Get enrollments
-            enrollments = ClassService.get_student_enrollments(student.id)
+            enrollments = self.class_service.get_student_enrollments(student.id)
             
             # Get instances and studio classes
             instances = []
@@ -146,13 +141,13 @@ class ClassController:
             enrollment_map = {}
             
             for enrollment in enrollments:
-                instance = ClassService.get_instance_by_id(enrollment.instance_id)
+                instance = self.class_service.get_instance_by_id(enrollment.instance_id)
                 if instance:
                     instances.append(instance)
                     enrollment_map[instance.instance_id] = enrollment
                     
                     if instance.class_id not in studio_classes:
-                        studio_class = ClassService.get_class_by_id(instance.class_id)
+                        studio_class = self.class_service.get_class_by_id(instance.class_id)
                         if studio_class:
                             studio_classes[instance.class_id] = studio_class
             
@@ -177,8 +172,7 @@ class ClassController:
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
     
-    @staticmethod
-    def cancel_enrollment():
+    def cancel_enrollment(self):
         """Handle enrollment cancellation request"""
         try:
             data = request.get_json()
@@ -195,11 +189,11 @@ class ClassController:
             # Find student
             student = None
             if student_id:
-                student = UserService.get_user_by_id(student_id)
+                student = self.user_service.get_user_by_id(student_id)
                 if student and student.discriminator != 'student':
                     student = None
             elif clerk_user_id:
-                student = UserService.get_user_by_clerk_id(clerk_user_id)
+                student = self.user_service.get_user_by_clerk_id(clerk_user_id)
                 if student and student.discriminator != 'student':
                     student = None
             
@@ -207,23 +201,20 @@ class ClassController:
                 return jsonify({"success": False, "error": "Student not found"}), 404
             
             # Cancel enrollment
-            ClassService.cancel_enrollment(student.id, instance_id)
+            self.class_service.cancel_enrollment(student.id, instance_id)
             
             return jsonify({
                 "success": True,
                 "message": "Enrollment cancelled successfully"
             })
             
-        except ValueError as e:
-            return jsonify({"success": False, "error": str(e)}), 400
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
     
-    @staticmethod
-    def get_class_staff(class_id):
+    def get_class_staff(self, class_id):
         """Handle get class staff request"""
         try:
-            studio_class = ClassService.get_class_by_id(class_id)
+            studio_class = self.class_service.get_class_by_id(class_id)
             if not studio_class:
                 return jsonify({"success": False, "error": "Class not found"}), 404
             
@@ -238,8 +229,7 @@ class ClassController:
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
     
-    @staticmethod
-    def add_class_staff(class_id):
+    def add_class_staff(self, class_id):
         """Handle add class staff request"""
         try:
             data = request.get_json()
@@ -250,36 +240,30 @@ class ClassController:
             if not staff_id:
                 return jsonify({"success": False, "error": "staff_id is required"}), 400
             
-            ClassService.add_staff_to_class(class_id, staff_id)
+            self.class_service.add_staff_to_class(class_id, staff_id)
             
             return jsonify({
                 "success": True,
                 "message": "Staff member added successfully"
             })
             
-        except ValueError as e:
-            return jsonify({"success": False, "error": str(e)}), 400
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
     
-    @staticmethod
-    def remove_class_staff(class_id, staff_id):
+    def remove_class_staff(self, class_id, staff_id):
         """Handle remove class staff request"""
         try:
-            ClassService.remove_staff_from_class(class_id, staff_id)
+            self.class_service.remove_staff_from_class(class_id, staff_id)
             
             return jsonify({
                 "success": True,
                 "message": "Staff member removed successfully"
             })
             
-        except ValueError as e:
-            return jsonify({"success": False, "error": str(e)}), 400
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
     
-    @staticmethod
-    def change_class_instructor(class_id):
+    def change_class_instructor(self, class_id):
         """Handle change class instructor request"""
         try:
             data = request.get_json()
@@ -290,14 +274,94 @@ class ClassController:
             if not new_instructor_id:
                 return jsonify({"success": False, "error": "instructor_id is required"}), 400
             
-            ClassService.change_class_instructor(class_id, new_instructor_id)
+            self.class_service.change_class_instructor(class_id, new_instructor_id)
             
             return jsonify({
                 "success": True,
                 "message": "Instructor changed successfully"
             })
             
-        except ValueError as e:
-            return jsonify({"success": False, "error": str(e)}), 400
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+    
+    def get_future_instances(self):
+        """Handle get future instances request"""
+        try:
+            instances = self.class_service.get_future_instances()
+            
+            # Get studio classes for context
+            studio_classes = {}
+            for instance in instances:
+                if instance.class_id not in studio_classes:
+                    studio_class = self.class_service.get_class_by_id(instance.class_id)
+                    if studio_class:
+                        studio_classes[instance.class_id] = studio_class
+            
+            # Create DTOs with studio class data
+            class_dtos = []
+            for instance in instances:
+                studio_class = studio_classes.get(instance.class_id)
+                instance_dto = ClassInstanceDTO.from_instance(instance, studio_class)
+                class_dtos.append(instance_dto.to_dict())
+            
+            return jsonify({
+                "success": True,
+                "classes": class_dtos
+            })
+            
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+    
+    def get_all_classes(self):
+        """Handle get all classes request"""
+        try:
+            classes = self.class_service.get_all_classes()
+            class_dtos = StudioClassDTO.from_studio_class_list(classes)
+            
+            return jsonify({
+                "success": True,
+                "classes": [dto.to_dict() for dto in class_dtos]
+            })
+            
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+    
+    def get_class_by_id(self, class_id: int):
+        """Handle get class by ID request"""
+        try:
+            studio_class = self.class_service.get_class_by_id(class_id)
+            if not studio_class:
+                return jsonify({"success": False, "error": "Class not found"}), 404
+            
+            class_dto = StudioClassDTO.from_studio_class(studio_class)
+            return jsonify({"success": True, "class": class_dto.to_dict()})
+            
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+    
+    def get_instance_by_id(self, instance_id: str):
+        """Handle get instance by ID request"""
+        try:
+            instance = self.class_service.get_instance_by_id(instance_id)
+            if not instance:
+                return jsonify({"success": False, "error": "Instance not found"}), 404
+            
+            instance_dto = ClassInstanceDTO.from_instance(instance)
+            return jsonify({"success": True, "instance": instance_dto.to_dict()})
+            
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+    
+    def get_available_instances(self):
+        """Handle get available instances request"""
+        try:
+            instances = self.class_service.get_available_instances()
+            instance_dtos = ClassInstanceDTO.from_instance_list(instances)
+            
+            return jsonify({
+                "success": True,
+                "classes": [dto.to_dict() for dto in instance_dtos]
+            })
+            
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500 
