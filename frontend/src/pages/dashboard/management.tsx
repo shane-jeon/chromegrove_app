@@ -104,7 +104,14 @@ export default function ManagementDashboard() {
     const data = await res.json();
     setLoading(false);
     if (data.success && data.studio_class) {
-      setClasses((prev) => [...prev, data.studio_class]);
+      // Fetch the updated list of class instances instead of just adding the studio class
+      const instancesRes = await fetch(
+        "http://localhost:5000/api/studio-classes/list",
+      );
+      const instancesData = await instancesRes.json();
+      if (instancesData.success) {
+        setClasses(instancesData.classes || []);
+      }
       setShowDropdown(false);
       setForm({
         class_name: "",
