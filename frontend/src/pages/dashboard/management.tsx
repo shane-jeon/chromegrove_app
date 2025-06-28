@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import AddClassDropdownForm, {
   type AddClassForm,
 } from "../../components/AddClassDropdownForm";
-import Calendar from "react-calendar";
-import "react-calendar/dist/Calendar.css";
+import Schedule from "../../components/Schedule";
 
 interface StudioClass {
   id: number;
@@ -26,14 +25,6 @@ interface Instructor {
   email: string;
 }
 
-function isSameDay(date1: Date, date2: Date) {
-  return (
-    date1.getFullYear() === date2.getFullYear() &&
-    date1.getMonth() === date2.getMonth() &&
-    date1.getDate() === date2.getDate()
-  );
-}
-
 export default function ManagementDashboard() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [classes, setClasses] = useState<StudioClass[]>([]);
@@ -50,7 +41,6 @@ export default function ManagementDashboard() {
   });
   const [loading, setLoading] = useState(false);
   const [staffList, setStaffList] = useState<Instructor[]>([]);
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [showInstructors, setShowInstructors] = useState(false);
 
   // Fetch all classes on mount
@@ -129,11 +119,6 @@ export default function ManagementDashboard() {
     }
   };
 
-  // Filtering logic for selected day
-  const classesForSelectedDay = classes.filter((c) =>
-    isSameDay(new Date(c.start_time), selectedDate),
-  );
-
   return (
     <div className="flex min-h-screen flex-col items-center bg-gray-50 px-4 py-10">
       <div className="mx-auto w-full max-w-5xl">
@@ -143,75 +128,9 @@ export default function ManagementDashboard() {
         <div
           className="flex flex-row items-stretch justify-center gap-8"
           style={{ minHeight: "500px" }}>
-          {/* Left Column: Schedule, vertically centered */}
+          {/* Left Column: Schedule */}
           <div className="flex flex-1 flex-col items-center justify-center">
-            <div className="schedule-box mx-auto rounded-lg border border-gray-200 bg-white p-4">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-purple-700">
-                  Schedule
-                </h2>
-              </div>
-              <Calendar
-                value={selectedDate}
-                onChange={(date) => setSelectedDate(date as Date)}
-                tileClassName={({ date, view }) =>
-                  view === "month" && isSameDay(date, selectedDate)
-                    ? "calendar-selected-day"
-                    : undefined
-                }
-                tileContent={({ date, view }) => {
-                  if (
-                    view === "month" &&
-                    classes.some((c) => isSameDay(new Date(c.start_time), date))
-                  ) {
-                    return <div className="calendar-dot" />;
-                  }
-                  return null;
-                }}
-                showNeighboringMonth={false}
-              />
-              <div className="mt-4">
-                <h3 className="text-md mb-2 font-semibold text-purple-700">
-                  Classes on {selectedDate.toLocaleDateString()}
-                </h3>
-                {classesForSelectedDay.length === 0 ? (
-                  <div className="p-4 text-center text-gray-500">
-                    No classes found.
-                  </div>
-                ) : (
-                  <div className="divide-y">
-                    {classesForSelectedDay.map((c) => (
-                      <div
-                        key={c.instance_id || c.id}
-                        className="rounded px-2 py-3 transition hover:bg-purple-50">
-                        <div className="font-bold text-purple-800">
-                          {c.class_name}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {c.description}
-                        </div>
-                        <div className="mt-1 text-xs text-gray-500">
-                          Start:{" "}
-                          {new Date(c.start_time).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}{" "}
-                          | Duration: {c.duration} min
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Roster: {"enrolled_count" in c ? c.enrolled_count : 0}
-                          /{c.max_capacity}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Max: {c.max_capacity} | Recurrence:{" "}
-                          {c.recurrence_pattern || "None"}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+            <Schedule classes={classes} role="management" />
           </div>
           {/* Right Column: Add Class, button and form centered horizontally, start at top */}
           <div className="flex flex-1 flex-col items-center justify-start">

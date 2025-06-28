@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useUser } from "@clerk/nextjs";
+import ClassScheduleList from "../../components/ClassScheduleList";
+import Schedule from "../../components/Schedule";
 
 interface ClassItem {
   instance_id: string;
@@ -756,58 +758,31 @@ const LoadingText = styled.div`
 
 // Utility functions
 function formatClassDate(startTime: string): string {
-  try {
-    const date = new Date(startTime);
-
-    // Check if the date is valid
-    if (isNaN(date.getTime())) {
-      return "Invalid date";
-    }
-
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
-  } catch (error) {
-    console.error("Error formatting class date:", error);
-    return "Date unavailable";
-  }
+  const date = new Date(startTime);
+  return date.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function formatClassTime(startTime: string, duration: number): string {
-  try {
-    const startDate = new Date(startTime);
+  const start = new Date(startTime);
+  const end = new Date(start.getTime() + duration * 60000);
 
-    // Check if the date is valid
-    if (isNaN(startDate.getTime())) {
-      return "Invalid date";
-    }
+  const startTimeStr = start.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 
-    // Check if duration is valid
-    if (!duration || isNaN(duration) || duration <= 0) {
-      return "Invalid duration";
-    }
+  const endTimeStr = end.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 
-    const endDate = new Date(startDate.getTime() + duration * 60000);
-
-    const startTimeStr = startDate.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-
-    const endTimeStr = endDate.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-
-    return `${startTimeStr} - ${endTimeStr}`;
-  } catch (error) {
-    console.error("Error formatting class time:", error);
-    return "Time unavailable";
-  }
+  return `${startTimeStr} - ${endTimeStr}`;
 }
 
 type TabType = "studio" | "upcoming" | "past";
@@ -817,12 +792,11 @@ export default function StudentDashboard() {
   const [allClasses, setAllClasses] = useState<ClassItem[]>([]);
   const [enrolledClasses, setEnrolledClasses] = useState<ClassItem[]>([]);
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loadingSlidingScale, setLoadingSlidingScale] = useState(false);
   const [slidingScaleOptions, setSlidingScaleOptions] = useState<
     SlidingScaleOption[]
   >([]);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<TabType>("studio");
-  const [loadingSlidingScale, setLoadingSlidingScale] = useState(true);
 
   // Modal state
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -842,6 +816,9 @@ export default function StudentDashboard() {
 
   // Track if component is mounted to fix initial styling
   const [isMounted, setIsMounted] = useState(false);
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<TabType>("studio");
 
   useEffect(() => {
     setIsMounted(true);
@@ -1054,77 +1031,6 @@ export default function StudentDashboard() {
     recommended_attire: c.recommended_attire || "Comfortable athletic wear",
   }));
 
-  // Helper function to render a class card
-  const renderClassCard = (
-    c: ClassItem,
-    cardType: "studio" | "upcoming" | "past",
-  ) => {
-    const isPast = cardType === "past";
-    const isBooked = c.is_enrolled || false;
-    const isFull = c.enrolled_count >= c.max_capacity;
-
-    return (
-      <ClassCard key={c.instance_id} isPast={isPast}>
-        <ClassCardContent>
-          {/* Date and Time */}
-          <DateTimeSection>
-            <DateText>{formatClassDate(c.start_time)}</DateText>
-            <TimeText>{formatClassTime(c.start_time, c.duration)}</TimeText>
-          </DateTimeSection>
-
-          {/* Class Information */}
-          <ClassInfoSection>
-            <ClassName>{c.class_name}</ClassName>
-            <InstructorName>
-              Instructor: {c.instructor_name || c.instructor_id}
-            </InstructorName>
-            <ClassDescription>{c.description}</ClassDescription>
-            <ClassDetails>
-              <DetailItem>
-                <strong>Requirements:</strong> {c.requirements}
-              </DetailItem>
-              <DetailItem>
-                <strong>Attire:</strong> {c.recommended_attire}
-              </DetailItem>
-              <DetailItem>
-                <strong>Capacity:</strong> {c.enrolled_count}/{c.max_capacity}
-              </DetailItem>
-            </ClassDetails>
-          </ClassInfoSection>
-
-          {/* Action Buttons */}
-          <ActionSection>
-            {cardType === "studio" ? (
-              // Studio Schedule: Book button or enrolled badge with cancel button
-              isBooked ? (
-                <div>
-                  <EnrolledBadge>Already Enrolled</EnrolledBadge>
-                  <CancelButton onClick={() => handleCancelClass(c)}>
-                    Cancel
-                  </CancelButton>
-                </div>
-              ) : isFull ? (
-                <BookButton disabled>Full</BookButton>
-              ) : (
-                <BookButton onClick={() => handleBookClassClick(c)}>
-                  Book Class
-                </BookButton>
-              )
-            ) : cardType === "upcoming" ? (
-              // Upcoming Classes: Cancel button
-              <CancelButton onClick={() => handleCancelClass(c)}>
-                Cancel
-              </CancelButton>
-            ) : (
-              // Past Classes: No buttons (greyed out)
-              <div></div>
-            )}
-          </ActionSection>
-        </ClassCardContent>
-      </ClassCard>
-    );
-  };
-
   // Get current tab content
   const getTabContent = () => {
     switch (activeTab) {
@@ -1135,7 +1041,13 @@ export default function StudentDashboard() {
             <p>Check back later for new class offerings!</p>
           </EmptyState>
         ) : (
-          enhancedStudioClasses.map((c) => renderClassCard(c, "studio"))
+          <ClassScheduleList
+            classes={enhancedStudioClasses}
+            viewType="student"
+            onBookClass={handleBookClassClick}
+            onCancelClass={handleCancelClass}
+            emptyMessage="No upcoming classes found."
+          />
         );
       case "upcoming":
         return enhancedUpcomingClasses.length === 0 ? (
@@ -1144,7 +1056,13 @@ export default function StudentDashboard() {
             <p>You haven&apos;t enrolled in any upcoming classes yet.</p>
           </EmptyState>
         ) : (
-          enhancedUpcomingClasses.map((c) => renderClassCard(c, "upcoming"))
+          <ClassScheduleList
+            classes={enhancedUpcomingClasses}
+            viewType="student"
+            onBookClass={handleBookClassClick}
+            onCancelClass={handleCancelClass}
+            emptyMessage="You haven't enrolled in any upcoming classes yet."
+          />
         );
       case "past":
         return enhancedPastClasses.length === 0 ? (
@@ -1153,7 +1071,13 @@ export default function StudentDashboard() {
             <p>You haven&apos;t taken any classes yet.</p>
           </EmptyState>
         ) : (
-          enhancedPastClasses.map((c) => renderClassCard(c, "past"))
+          <ClassScheduleList
+            classes={enhancedPastClasses}
+            viewType="student"
+            onBookClass={handleBookClassClick}
+            onCancelClass={handleCancelClass}
+            emptyMessage="You haven't taken any classes yet."
+          />
         );
       default:
         return null;

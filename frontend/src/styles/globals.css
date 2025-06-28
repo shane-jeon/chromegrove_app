@@ -359,3 +359,457 @@ body {
   background-color: #a78bfa;
   color: white;
 }
+
+/* View Toggle Styles */
+.view-toggle {
+  display: flex;
+  background: #f1f3f4;
+  border-radius: 8px;
+  padding: 4px;
+  margin-bottom: 20px;
+  border: 1px solid #e2e8f0;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  color: #666;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 6px;
+  position: relative;
+}
+
+.toggle-btn:hover {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+
+.toggle-btn.active {
+  background: white;
+  color: #805ad5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-btn.active::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #805ad5;
+  border-radius: 0 0 6px 6px;
+}
+
+/* List View Styles */
+.list-view {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.classes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.class-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.class-card:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.class-card-content {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+
+.date-time-section {
+  flex: 0 0 140px;
+  text-align: center;
+}
+
+.date-text {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #805ad5;
+  margin-bottom: 0.25rem;
+}
+
+.time-text {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #2d3748;
+}
+
+.class-info-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.class-name {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0;
+}
+
+.instructor-name {
+  font-size: 0.875rem;
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.class-description {
+  font-size: 0.875rem;
+  color: #4a5568;
+  line-height: 1.4;
+}
+
+.class-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.detail-item {
+  font-size: 0.75rem;
+  color: #718096;
+}
+
+.detail-item strong {
+  color: #4a5568;
+}
+
+.action-section {
+  flex: 0 0 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.management-badge {
+  background: #805ad5;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Calendar View Enhancements */
+.calendar-classes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.calendar-class-card {
+  background: #f8f9fa;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  transition: all 0.2s ease;
+}
+
+.calendar-class-card:hover {
+  background: #f1f3f4;
+  border-color: #cbd5e0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .class-card-content {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .date-time-section {
+    flex: none;
+    text-align: left;
+  }
+
+  .action-section {
+    flex: none;
+    align-items: flex-start;
+  }
+
+  .view-toggle {
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .toggle-btn {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* Class Schedule List Component */
+.class-schedule-list {
+  width: 100%;
+}
+
+.class-schedule-list .empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: #6b7280;
+}
+
+.class-schedule-list .classes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.class-schedule-list .class-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.class-schedule-list .class-card:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.class-schedule-list .class-card-content {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.class-schedule-list .date-time-section {
+  flex: 0 0 140px;
+  text-align: center;
+}
+
+.class-schedule-list .date-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #805ad5;
+  margin-bottom: 4px;
+}
+
+.class-schedule-list .time-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: #2d3748;
+}
+
+.class-schedule-list .class-info-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.class-schedule-list .class-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0;
+}
+
+.class-schedule-list .instructor-name {
+  font-size: 14px;
+  color: #805ad5;
+  font-weight: 600;
+}
+
+.class-schedule-list .class-description {
+  font-size: 14px;
+  color: #4a5568;
+  line-height: 1.5;
+}
+
+.class-schedule-list .class-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.class-schedule-list .detail-item {
+  font-size: 12px;
+  color: #718096;
+}
+
+.class-schedule-list .detail-item strong {
+  color: #4a5568;
+}
+
+.class-schedule-list .action-section {
+  flex: 0 0 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.class-schedule-list .book-button {
+  background: #805ad5;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.class-schedule-list .book-button:hover {
+  background: #6b46c1;
+  transform: translateY(-1px);
+}
+
+.class-schedule-list .book-button.disabled {
+  background: #cbd5e0;
+  cursor: not-allowed;
+}
+
+.class-schedule-list .book-button.disabled:hover {
+  background: #cbd5e0;
+  transform: none;
+}
+
+.class-schedule-list .cancel-button {
+  background: #e53e3e;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.class-schedule-list .cancel-button:hover {
+  background: #c53030;
+  transform: translateY(-1px);
+}
+
+.class-schedule-list .enrolled-badge {
+  background: #48bb78;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.class-schedule-list .management-badge {
+  background: #805ad5;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  text-align: center;
+}
+
+/* Responsive design for class cards */
+@media (max-width: 768px) {
+  .class-schedule-list .class-card-content {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .class-schedule-list .date-time-section {
+    flex: none;
+    text-align: left;
+  }
+
+  .class-schedule-list .action-section {
+    flex: none;
+    align-items: stretch;
+  }
+}
+
+/* Schedule Component */
+.schedule-container {
+  background: white;
+  border: 1px solid #d3d3d3;
+  border-radius: 12px;
+  padding: 24px;
+  width: 100%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.schedule-header {
+  margin-bottom: 20px;
+}
+
+.schedule-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0;
+  margin-bottom: 16px;
+}
+
+.schedule-content {
+  width: 100%;
+}
+
+/* Calendar Classes Section */
+.calendar-classes {
+  margin-top: 20px;
+}
+
+.calendar-classes-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 16px 0;
+}
+
+/* List View Section */
+.list-view {
+  width: 100%;
+}
+
+.list-view-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 16px 0;
+}
+
+/* Responsive Design for Schedule */
+@media (max-width: 768px) {
+  .schedule-container {
+    padding: 16px;
+  }
+
+  .schedule-title {
+    font-size: 20px;
+  }
+}
