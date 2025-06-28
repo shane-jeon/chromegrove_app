@@ -210,10 +210,20 @@ export default function ManagementDashboard() {
           <div className="flex flex-1 flex-col items-center justify-start">
             <div className="flex w-full flex-col items-center">
               <button
-                className={`add-class-btn mb-2 flex items-center rounded-full bg-purple-500 px-8 py-3 text-lg font-semibold text-white shadow transition hover:bg-purple-600 gap-2${
+                className={`add-class-btn mb-2 flex items-center rounded-full px-8 py-3 text-lg font-semibold text-white shadow transition gap-2${
                   showDropdown ? " open" : ""
                 }`}
-                style={{ background: "#a78bfa" }}
+                style={{
+                  background: "#805ad5",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#6b46c1";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#805ad5";
+                }}
                 onClick={() => setShowDropdown((prev) => !prev)}
                 type="button">
                 + Add Class <span className="arrow">▼</span>
@@ -230,8 +240,18 @@ export default function ManagementDashboard() {
               />
               {/* Instructors Button and Dropdown */}
               <button
-                className="add-class-btn mt-4 flex items-center gap-2 rounded-full bg-purple-500 px-8 py-3 text-lg font-semibold text-white shadow transition hover:bg-purple-600"
-                style={{ background: "#a78bfa" }}
+                className="add-class-btn mt-4 flex items-center gap-2 rounded-full px-8 py-3 text-lg font-semibold text-white shadow transition"
+                style={{
+                  background: "#805ad5",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#6b46c1";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#805ad5";
+                }}
                 onClick={async () => {
                   if (!staffList.length) {
                     // Fetch staff if not already loaded
