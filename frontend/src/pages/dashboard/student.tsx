@@ -756,31 +756,58 @@ const LoadingText = styled.div`
 
 // Utility functions
 function formatClassDate(startTime: string): string {
-  const date = new Date(startTime);
-  return date.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
+  try {
+    const date = new Date(startTime);
+
+    // Check if the date is valid
+    if (isNaN(date.getTime())) {
+      return "Invalid date";
+    }
+
+    return date.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+  } catch (error) {
+    console.error("Error formatting class date:", error);
+    return "Date unavailable";
+  }
 }
 
 function formatClassTime(startTime: string, duration: number): string {
-  const startDate = new Date(startTime);
-  const endDate = new Date(startDate.getTime() + duration * 60000);
+  try {
+    const startDate = new Date(startTime);
 
-  const startTimeStr = startDate.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
+    // Check if the date is valid
+    if (isNaN(startDate.getTime())) {
+      return "Invalid date";
+    }
 
-  const endTimeStr = endDate.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
+    // Check if duration is valid
+    if (!duration || isNaN(duration) || duration <= 0) {
+      return "Invalid duration";
+    }
 
-  return `${startTimeStr} - ${endTimeStr}`;
+    const endDate = new Date(startDate.getTime() + duration * 60000);
+
+    const startTimeStr = startDate.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    const endTimeStr = endDate.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    return `${startTimeStr} - ${endTimeStr}`;
+  } catch (error) {
+    console.error("Error formatting class time:", error);
+    return "Time unavailable";
+  }
 }
 
 type TabType = "studio" | "upcoming" | "past";

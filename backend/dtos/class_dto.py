@@ -68,6 +68,7 @@ class ClassInstanceDTO:
             self.recurrence_pattern = studio_class.recurrence_pattern
             self.instructor_id = studio_class.instructor_id
             self.instructor_name = studio_class.instructor.name if studio_class.instructor else str(studio_class.instructor_id)
+            self.duration = studio_class.duration
         else:
             self.class_name = None
             self.description = None
@@ -76,6 +77,7 @@ class ClassInstanceDTO:
             self.recurrence_pattern = None
             self.instructor_id = None
             self.instructor_name = None
+            self.duration = None
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary"""
@@ -96,7 +98,8 @@ class ClassInstanceDTO:
             "recommended_attire": self.recommended_attire,
             "recurrence_pattern": self.recurrence_pattern,
             "instructor_id": self.instructor_id,
-            "instructor_name": self.instructor_name
+            "instructor_name": self.instructor_name,
+            "duration": self.duration
         }
     
     @classmethod
