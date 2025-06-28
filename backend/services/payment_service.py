@@ -3,15 +3,47 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 import stripe
 import os
+from repositories.payment_repository import PaymentRepository
 
 
 class PaymentService:
-    """Service class for payment-related business logic"""
+    """Service layer for payment-related business logic"""
     
-    @staticmethod
-    def get_sliding_scale_options() -> List[SlidingScaleOption]:
+    def __init__(self):
+        self.payment_repository = PaymentRepository()
+    
+    def get_sliding_scale_options(self) -> List[SlidingScaleOption]:
         """Get drop-in sliding scale options only"""
-        return SlidingScaleOption.query.filter_by(category='drop-in').all()
+        return self.payment_repository.find_drop_in_options()
+    
+    def get_all_sliding_scale_options(self) -> List[SlidingScaleOption]:
+        """Get all sliding scale options"""
+        return self.payment_repository.get_all()
+    
+    def get_options_by_category(self, category: str) -> List[SlidingScaleOption]:
+        """Get sliding scale options by category"""
+        return self.payment_repository.find_by_category(category)
+    
+    def get_membership_options(self) -> List[SlidingScaleOption]:
+        """Get membership sliding scale options"""
+        return self.payment_repository.find_membership_options()
+    
+    def get_active_options(self) -> List[SlidingScaleOption]:
+        """Get active sliding scale options"""
+        return self.payment_repository.find_active_options()
+    
+    def create_sliding_scale_option(self, option_data: dict) -> SlidingScaleOption:
+        """Create a new sliding scale option"""
+        option = SlidingScaleOption(**option_data)
+        return self.payment_repository.create(option)
+    
+    def update_sliding_scale_option(self, option: SlidingScaleOption) -> SlidingScaleOption:
+        """Update a sliding scale option"""
+        return self.payment_repository.update(option)
+    
+    def delete_sliding_scale_option(self, option: SlidingScaleOption) -> bool:
+        """Delete a sliding scale option"""
+        return self.payment_repository.delete(option)
     
     @staticmethod
     def get_sliding_scale_option(option_id: int) -> Optional[SlidingScaleOption]:
