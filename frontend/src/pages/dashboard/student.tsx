@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useUser } from "@clerk/nextjs";
 import ClassScheduleList from "../../components/ClassScheduleList";
-import Schedule from "../../components/Schedule";
 
 interface ClassItem {
   instance_id: string;
@@ -49,10 +48,11 @@ interface User {
 // Main Layout
 const DashboardContainer = styled.div`
   display: flex;
-  gap: 32px;
-  padding: 32px;
+  gap: 24px;
+  padding: 24px;
   max-width: 1400px;
   margin: 0 auto;
+  min-height: 100vh;
 
   @media (max-width: 768px) {
     flex-direction: column;
@@ -62,29 +62,36 @@ const DashboardContainer = styled.div`
 
 // Left Side - Class Schedule (70%)
 const ScheduleContainer = styled.div`
-  flex: 0 0 70%;
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 24px;
+  min-width: 0; /* Allow flex item to shrink */
 
   @media (max-width: 768px) {
     flex: 1;
   }
 `;
 
-// Right Side - Bulletin Board (30%)
+// Right Side - Bulletin Board (Sidebar)
 const BulletinContainer = styled.div`
-  flex: 0 0 30%;
-  background: #f8f9fa;
+  flex: 0 0 320px;
+  background: white;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 24px;
   height: fit-content;
-  max-height: 80vh;
+  max-height: calc(100vh - 48px);
   overflow-y: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 24px;
 
   @media (max-width: 768px) {
-    flex: 1;
+    flex: none;
     max-height: none;
+    position: static;
+    margin-top: 16px;
   }
 `;
 
@@ -138,156 +145,64 @@ const TabContent = styled.div`
   min-height: 400px;
 `;
 
-// Class Card
-const ClassCard = styled.div<{ isPast: boolean }>`
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  transition: all 0.2s ease;
-  opacity: ${({ isPast }) => (isPast ? 0.6 : 1)};
-
-  &:hover {
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    transform: ${({ isPast }) => (isPast ? "none" : "translateY(-2px)")};
-  }
-`;
-
-const ClassCardContent = styled.div`
-  display: flex;
-  gap: 20px;
-  align-items: flex-start;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    gap: 16px;
-  }
-`;
-
-const DateTimeSection = styled.div`
-  flex: 0 0 140px;
+// Empty State
+const EmptyState = styled.div`
   text-align: center;
+  padding: 40px;
+  color: #718096;
 
-  @media (max-width: 768px) {
-    flex: none;
-    text-align: left;
+  h3 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  p {
+    margin: 0;
+    font-size: 14px;
   }
 `;
 
-const DateText = styled.div`
-  font-size: 14px;
-  font-weight: 600;
-  color: #805ad5;
-  margin-bottom: 4px;
+// Bulletin Board Styles
+const BulletinTitle = styled.h2`
+  font-size: 20px;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0 0 20px 0;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e2e8f0;
 `;
 
-const TimeText = styled.div`
+const BulletinItem = styled.div`
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border-left: 4px solid #805ad5;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+`;
+
+const BulletinItemTitle = styled.h3`
   font-size: 16px;
-  font-weight: 700;
-  color: #2d3748;
-`;
-
-const ClassInfoSection = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`;
-
-const ClassName = styled.h3`
-  font-size: 18px;
-  font-weight: 700;
-  color: #2d3748;
-  margin: 0;
-`;
-
-const InstructorName = styled.div`
-  font-size: 14px;
-  color: #805ad5;
   font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 8px 0;
 `;
 
-const ClassDescription = styled.div`
+const BulletinItemBody = styled.p`
   font-size: 14px;
   color: #4a5568;
   line-height: 1.5;
+  margin: 0 0 8px 0;
 `;
 
-const ClassDetails = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 8px;
-`;
-
-const DetailItem = styled.div`
+const BulletinItemDate = styled.div`
   font-size: 12px;
   color: #718096;
-
-  strong {
-    color: #4a5568;
-  }
-`;
-
-const ActionSection = styled.div`
-  flex: 0 0 120px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: flex-end;
-
-  @media (max-width: 768px) {
-    flex: none;
-    align-items: stretch;
-  }
-`;
-
-const BookButton = styled.button<{ disabled?: boolean }>`
-  background: ${({ disabled }) => (disabled ? "#cbd5e0" : "#805ad5")};
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: ${({ disabled }) => (disabled ? "not-allowed" : "pointer")};
-  transition: all 0.2s ease;
-  width: 100%;
-
-  &:hover {
-    background: ${({ disabled }) => (disabled ? "#cbd5e0" : "#6b46c1")};
-    transform: ${({ disabled }) => (disabled ? "none" : "translateY(-1px)")};
-  }
-`;
-
-const CancelButton = styled.button`
-  background: #e53e3e;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  width: 100%;
-
-  &:hover {
-    background: #c53030;
-    transform: translateY(-1px);
-  }
-`;
-
-const EnrolledBadge = styled.div`
-  background: #48bb78;
-  color: white;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 4px;
-  text-align: center;
+  font-weight: 500;
 `;
 
 // Modal Styles
@@ -357,103 +272,44 @@ const ModalTitle = styled.h2`
 
 const ModalSubtitle = styled.p`
   font-size: 16px;
-  color: #4a5568;
+  color: #718096;
   margin: 0;
+  line-height: 1.5;
 `;
-
-// Tabbed Modal Container - UNUSED
-/*
-const ModalTabContainer = styled.div`
-  background: #f8f9fa;
-  border-radius: 12px;
-  overflow: hidden;
-  margin-bottom: 32px;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-`;
-
-const ModalTabHeader = styled.div`
-  display: flex;
-  background: #f1f3f4;
-  border-bottom: 1px solid #e2e8f0;
-`;
-
-const ModalTabButton = styled.button<{ active: boolean }>`
-  flex: 1;
-  padding: 16px 20px;
-  border: none;
-  background: ${({ active }) => (active ? "white" : "transparent")};
-  color: ${({ active }) => (active ? "#805ad5" : "#666")};
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
-
-  &:hover {
-    background: ${({ active }) => (active ? "white" : "#e2e8f0")};
-  }
-
-  ${({ active }) =>
-    active &&
-    `
-    &::after {
-      content: '';
-      position: absolute;
-      bottom: -1px;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: #805ad5;
-    }
-  `}
-`;
-
-const ModalTabContent = styled.div`
-  padding: 24px;
-  flex: 1;
-  overflow-y: auto;
-`;
-*/
 
 // Sliding Scale Components
 const TierCard = styled.div<{ selected: boolean }>`
   background: ${({ selected }) => (selected ? "#f7fafc" : "white")};
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 20px;
   border: 2px solid ${({ selected }) => (selected ? "#805ad5" : "#e2e8f0")};
-  transition: all 0.2s ease;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
   cursor: pointer;
+  transition: all 0.2s ease;
 
   &:hover {
     border-color: #805ad5;
-    background: #f7fafc;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(128, 90, 213, 0.15);
   }
 
   &:last-child {
     margin-bottom: 0;
   }
-
-  ${({ selected }) =>
-    selected &&
-    `
-    box-shadow: 0 4px 12px rgba(128, 90, 213, 0.2);
-  `}
 `;
 
 const TierHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 `;
 
-const TierName = styled.div`
+const TierName = styled.h3`
   font-size: 18px;
   font-weight: 700;
   color: #2d3748;
+  margin: 0;
 `;
 
 const TierPriceRange = styled.div`
@@ -462,15 +318,15 @@ const TierPriceRange = styled.div`
   color: #805ad5;
 `;
 
-const TierDescription = styled.div`
+const TierDescription = styled.p`
   font-size: 14px;
   color: #4a5568;
-  line-height: 1.6;
-  margin-bottom: 20px;
+  line-height: 1.5;
+  margin: 0 0 16px 0;
 `;
 
 const SliderContainer = styled.div`
-  margin-bottom: 16px;
+  margin-top: 16px;
 `;
 
 const SliderLabel = styled.div`
@@ -483,11 +339,11 @@ const SliderLabel = styled.div`
 const SliderValue = styled.div`
   font-size: 18px;
   font-weight: 700;
-  color: #805ad5;
+  color: #2d3748;
 `;
 
 const SliderRange = styled.div`
-  font-size: 12px;
+  font-size: 14px;
   color: #718096;
 `;
 
@@ -498,7 +354,6 @@ const Slider = styled.input`
   background: #e2e8f0;
   outline: none;
   -webkit-appearance: none;
-  appearance: none;
 
   &::-webkit-slider-thumb {
     -webkit-appearance: none;
@@ -520,21 +375,16 @@ const Slider = styled.input`
     border: none;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
-
-  &:hover::-webkit-slider-thumb {
-    background: #6b46c1;
-  }
-
-  &:hover::-moz-range-thumb {
-    background: #6b46c1;
-  }
 `;
 
 const ErrorMessage = styled.div`
-  color: #e53e3e;
+  background: #fed7d7;
+  color: #c53030;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 16px;
   font-size: 14px;
-  margin-top: 8px;
-  text-align: center;
+  border: 1px solid #feb2b2;
 `;
 
 const ModalActions = styled.div`
@@ -542,182 +392,42 @@ const ModalActions = styled.div`
   gap: 12px;
   justify-content: flex-end;
   margin-top: 24px;
+  flex-shrink: 0;
 `;
 
-const ModalButton = styled.button<{
-  primary?: boolean;
-  disabled?: boolean;
-  loading?: boolean;
-}>`
-  padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: ${({ disabled, loading }) =>
-    disabled || loading ? "not-allowed" : "pointer"};
-  transition: all 0.2s ease;
-  min-width: 120px;
-  position: relative;
-
-  ${({ primary, disabled, loading }) =>
-    primary
-      ? `
-    background: ${disabled || loading ? "#cbd5e0" : "#805ad5"};
-    color: white;
-    &:hover {
-      background: ${disabled || loading ? "#cbd5e0" : "#6b46c1"};
-      transform: ${disabled || loading ? "none" : "translateY(-1px)"};
-    }
-  `
-      : `
-    background: transparent;
-    color: #4a5568;
-    border: 1px solid #e2e8f0;
-    &:hover {
-      background: #f7fafc;
-      border-color: #cbd5e0;
-    }
-  `}
-`;
-
-// Bulletin Board
-const BulletinTitle = styled.h2`
-  font-size: 20px;
-  font-weight: 700;
-  color: #2d3748;
-  margin: 0 0 20px 0;
-`;
-
-const BulletinItem = styled.div`
-  background: white;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
-  border-left: 4px solid #805ad5;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-`;
-
-const BulletinItemTitle = styled.h3`
-  font-size: 16px;
-  font-weight: 600;
-  color: #2d3748;
-  margin: 0 0 8px 0;
-`;
-
-const BulletinItemBody = styled.div`
-  font-size: 14px;
-  color: #4a5568;
-  line-height: 1.5;
-  margin-bottom: 8px;
-`;
-
-const BulletinItemDate = styled.div`
-  font-size: 12px;
-  color: #a0aec0;
-`;
-
-// Empty State
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 40px;
-  color: #718096;
-  background: #f7fafc;
-  border-radius: 12px;
-  border: 2px dashed #e2e8f0;
-
-  h3 {
-    margin: 0 0 8px 0;
-    font-size: 18px;
-    font-weight: 600;
-  }
-
-  p {
-    margin: 0;
-    font-size: 14px;
-  }
-`;
-
-// Success Modal Components
-const SuccessModalOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1001;
-  padding: 20px;
-`;
-
-const SuccessModalContent = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 40px;
-  max-width: 500px;
-  width: 100%;
-  text-align: center;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-`;
-
-const SuccessIcon = styled.div`
-  width: 80px;
-  height: 80px;
-  background: #48bb78;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 24px;
-  font-size: 40px;
-  color: white;
-`;
-
-const SuccessTitle = styled.h2`
-  font-size: 24px;
-  font-weight: 700;
-  color: #2d3748;
-  margin: 0 0 16px 0;
-`;
-
-const SuccessMessage = styled.p`
-  font-size: 16px;
-  color: #4a5568;
-  margin: 0 0 32px 0;
-  line-height: 1.5;
-`;
-
-const SuccessButton = styled.button`
-  background: #48bb78;
-  color: white;
+const ModalButton = styled.button<{ primary?: boolean; loading?: boolean }>`
+  background: ${({ primary }) => (primary ? "#805ad5" : "#e2e8f0")};
+  color: ${({ primary }) => (primary ? "white" : "#4a5568")};
   border: none;
   border-radius: 8px;
   padding: 12px 24px;
   font-size: 14px;
   font-weight: 600;
-  cursor: pointer;
+  cursor: ${({ loading }) => (loading ? "not-allowed" : "pointer")};
   transition: all 0.2s ease;
-  min-width: 120px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: ${({ loading }) => (loading ? 0.6 : 1)};
 
   &:hover {
-    background: #38a169;
-    transform: translateY(-1px);
+    background: ${({ primary }) => (primary ? "#6b46c1" : "#cbd5e0")};
+    transform: ${({ loading }) => (loading ? "none" : "translateY(-1px)")};
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 `;
 
-// Loading Spinner Component
 const LoadingSpinner = styled.div`
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  border: 2px solid #f3f3f3;
-  border-top: 2px solid #805ad5;
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  margin-right: 8px;
 
   @keyframes spin {
     0% {
@@ -729,17 +439,62 @@ const LoadingSpinner = styled.div`
   }
 `;
 
+// Success Modal Styles
+const SuccessModalOverlay = styled(ModalOverlay)``;
+
+const SuccessModalContent = styled(ModalContent)`
+  text-align: center;
+  max-width: 500px;
+`;
+
+const SuccessIcon = styled.div`
+  font-size: 48px;
+  margin-bottom: 16px;
+`;
+
+const SuccessTitle = styled.h2`
+  font-size: 24px;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0 0 12px 0;
+`;
+
+const SuccessMessage = styled.p`
+  font-size: 16px;
+  color: #4a5568;
+  line-height: 1.5;
+  margin: 0 0 24px 0;
+`;
+
+const SuccessButton = styled.button`
+  background: #805ad5;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #6b46c1;
+    transform: translateY(-1px);
+  }
+`;
+
+// Loading Overlay
 const LoadingOverlay = styled.div`
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1002;
+  z-index: 2000;
 `;
 
 const LoadingContent = styled.div`
@@ -747,13 +502,7 @@ const LoadingContent = styled.div`
   border-radius: 12px;
   padding: 32px;
   text-align: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-`;
-
-const LoadingText = styled.div`
-  font-size: 16px;
-  color: #4a5568;
-  margin-top: 16px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
 `;
 
 // Utility functions
@@ -1539,7 +1288,10 @@ export default function StudentDashboard() {
         <LoadingOverlay>
           <LoadingContent>
             <LoadingSpinner />
-            <LoadingText>Updating your schedule...</LoadingText>
+            <div
+              style={{ fontSize: "16px", color: "#4a5568", marginTop: "16px" }}>
+              Updating your schedule...
+            </div>
           </LoadingContent>
         </LoadingOverlay>
       )}
