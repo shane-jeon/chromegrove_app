@@ -2,3 +2,7 @@ backend/venv/
 backend/__pycache__/
 backend/instance/db.sqlite3
 backend/.env
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
