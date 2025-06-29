@@ -129,7 +129,36 @@ const TabButton = styled.button<{ active: boolean }>`
 
 const TabContent = styled.div`
   padding: 24px;
-  min-height: 400px;
+  height: 400px;
+  overflow-y: auto;
+
+  /* Custom scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f3f4;
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e0;
+    border-radius: 4px;
+
+    &:hover {
+      background: #a0aec0;
+    }
+  }
+
+  /* Responsive height adjustments */
+  @media (max-width: 768px) {
+    height: 350px;
+  }
+
+  @media (max-width: 480px) {
+    height: 300px;
+  }
 `;
 
 // Empty State

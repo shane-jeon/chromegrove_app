@@ -94,15 +94,57 @@ const AssignedClassesBox = styled.div`
   border-radius: 12px;
   padding: 24px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  height: 500px;
+
+  @media (max-width: 768px) {
+    height: 450px;
+  }
+
+  @media (max-width: 480px) {
+    height: 400px;
+  }
+`;
+
+const AssignedClassesHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+`;
+
+const AssignedClassesContent = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 8px;
+
+  /* Custom scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f3f4;
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e0;
+    border-radius: 4px;
+
+    &:hover {
+      background: #a0aec0;
+    }
+  }
 `;
 
 const BoxTitle = styled.h2`
   font-size: 20px;
   font-weight: 700;
   color: #2d3748;
-  margin: 0 0 20px 0;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #e2e8f0;
+  margin: 0;
 `;
 
 const ClassCard = styled.div`
@@ -733,13 +775,7 @@ export default function StaffDashboard() {
       <LeftSideContainer>
         {/* Assigned Upcoming Classes Box */}
         <AssignedClassesBox>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "16px",
-            }}>
+          <AssignedClassesHeader>
             <BoxTitle>Your Upcoming Classes</BoxTitle>
             <button
               onClick={fetchAssignedClasses}
@@ -755,138 +791,142 @@ export default function StaffDashboard() {
               }}>
               Refresh
             </button>
-          </div>
-          {assignedClasses.length === 0 ? (
-            <EmptyState>
-              <h3>No upcoming classes</h3>
-              <p>You don&apos;t have any upcoming classes assigned.</p>
-            </EmptyState>
-          ) : (
-            assignedClasses.map((classItem) => (
-              <ClassCard key={classItem.instance_id}>
-                <ClassHeader>
-                  <ClassInfo>
-                    <ClassName>
-                      {classItem.class_name}
-                      {classItem.is_instructor && (
-                        <InstructorBadge>Instructor</InstructorBadge>
-                      )}
-                    </ClassName>
-                    <ClassDetails>
-                      {formatClassDate(classItem.start_time)} •{" "}
-                      {formatClassTime(
-                        classItem.start_time,
-                        classItem.duration,
-                      )}
-                    </ClassDetails>
-                    <ClassDetails>
-                      {classItem.enrolled_count} enrolled •{" "}
-                      {classItem.max_capacity} max capacity
-                    </ClassDetails>
-                  </ClassInfo>
-                  <ExpandButton
-                    onClick={() => toggleClassExpansion(classItem.instance_id)}>
-                    {expandedClasses.has(classItem.instance_id) ? "▼" : "▶"}{" "}
-                    Roster
-                  </ExpandButton>
-                </ClassHeader>
-
-                {expandedClasses.has(classItem.instance_id) && (
-                  <StudentRoster>
-                    {classItem.students.length === 0 ? (
-                      <p style={{ color: "#718096", fontStyle: "italic" }}>
-                        No students enrolled
-                      </p>
-                    ) : (
-                      classItem.students.map((student) => {
-                        const canCheckIn = canMarkAttendance(
+          </AssignedClassesHeader>
+          <AssignedClassesContent>
+            {assignedClasses.length === 0 ? (
+              <EmptyState>
+                <h3>No upcoming classes</h3>
+                <p>You don&apos;t have any upcoming classes assigned.</p>
+              </EmptyState>
+            ) : (
+              assignedClasses.map((classItem) => (
+                <ClassCard key={classItem.instance_id}>
+                  <ClassHeader>
+                    <ClassInfo>
+                      <ClassName>
+                        {classItem.class_name}
+                        {classItem.is_instructor && (
+                          <InstructorBadge>Instructor</InstructorBadge>
+                        )}
+                      </ClassName>
+                      <ClassDetails>
+                        {formatClassDate(classItem.start_time)} •{" "}
+                        {formatClassTime(
                           classItem.start_time,
-                        );
-                        const canMarkNoShowNow = canMarkNoShow(
-                          classItem.start_time,
-                        );
-                        const isCheckedIn =
-                          student.status === "attended" ||
-                          student.status === "missed";
+                          classItem.duration,
+                        )}
+                      </ClassDetails>
+                      <ClassDetails>
+                        {classItem.enrolled_count} enrolled •{" "}
+                        {classItem.max_capacity} max capacity
+                      </ClassDetails>
+                    </ClassInfo>
+                    <ExpandButton
+                      onClick={() =>
+                        toggleClassExpansion(classItem.instance_id)
+                      }>
+                      {expandedClasses.has(classItem.instance_id) ? "▼" : "▶"}{" "}
+                      Roster
+                    </ExpandButton>
+                  </ClassHeader>
 
-                        const StudentComponent = isCheckedIn
-                          ? CheckedInStudent
-                          : StudentItem;
+                  {expandedClasses.has(classItem.instance_id) && (
+                    <StudentRoster>
+                      {classItem.students.length === 0 ? (
+                        <p style={{ color: "#718096", fontStyle: "italic" }}>
+                          No students enrolled
+                        </p>
+                      ) : (
+                        classItem.students.map((student) => {
+                          const canCheckIn = canMarkAttendance(
+                            classItem.start_time,
+                          );
+                          const canMarkNoShowNow = canMarkNoShow(
+                            classItem.start_time,
+                          );
+                          const isCheckedIn =
+                            student.status === "attended" ||
+                            student.status === "missed";
 
-                        return (
-                          <StudentComponent key={student.enrollment_id}>
-                            <StudentInfo>
-                              <StudentName>{student.name}</StudentName>
-                              <StudentEmail>{student.email}</StudentEmail>
-                            </StudentInfo>
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "8px",
-                              }}>
-                              {student.status === "enrolled" ? (
-                                canCheckIn ? (
-                                  <AttendanceButtons>
-                                    <AttendanceButton
-                                      variant="checkin"
-                                      disabled={attendanceLoading.has(
-                                        student.enrollment_id,
-                                      )}
-                                      onClick={() =>
-                                        markAttendance(
+                          const StudentComponent = isCheckedIn
+                            ? CheckedInStudent
+                            : StudentItem;
+
+                          return (
+                            <StudentComponent key={student.enrollment_id}>
+                              <StudentInfo>
+                                <StudentName>{student.name}</StudentName>
+                                <StudentEmail>{student.email}</StudentEmail>
+                              </StudentInfo>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "8px",
+                                }}>
+                                {student.status === "enrolled" ? (
+                                  canCheckIn ? (
+                                    <AttendanceButtons>
+                                      <AttendanceButton
+                                        variant="checkin"
+                                        disabled={attendanceLoading.has(
                                           student.enrollment_id,
-                                          "attended",
+                                        )}
+                                        onClick={() =>
+                                          markAttendance(
+                                            student.enrollment_id,
+                                            "attended",
+                                          )
+                                        }>
+                                        {attendanceLoading.has(
+                                          student.enrollment_id,
                                         )
-                                      }>
-                                      {attendanceLoading.has(
-                                        student.enrollment_id,
-                                      )
-                                        ? "..."
-                                        : "Check In"}
-                                    </AttendanceButton>
-                                    <AttendanceButton
-                                      variant="noshow"
-                                      disabled={
-                                        attendanceLoading.has(
+                                          ? "..."
+                                          : "Check In"}
+                                      </AttendanceButton>
+                                      <AttendanceButton
+                                        variant="noshow"
+                                        disabled={
+                                          attendanceLoading.has(
+                                            student.enrollment_id,
+                                          ) || !canMarkNoShowNow
+                                        }
+                                        onClick={() =>
+                                          markAttendance(
+                                            student.enrollment_id,
+                                            "missed",
+                                          )
+                                        }>
+                                        {attendanceLoading.has(
                                           student.enrollment_id,
-                                        ) || !canMarkNoShowNow
-                                      }
-                                      onClick={() =>
-                                        markAttendance(
-                                          student.enrollment_id,
-                                          "missed",
                                         )
-                                      }>
-                                      {attendanceLoading.has(
-                                        student.enrollment_id,
-                                      )
-                                        ? "..."
-                                        : "No Show"}
-                                    </AttendanceButton>
-                                  </AttendanceButtons>
+                                          ? "..."
+                                          : "No Show"}
+                                      </AttendanceButton>
+                                    </AttendanceButtons>
+                                  ) : (
+                                    <CheckInUnavailable>
+                                      Check-in not yet available
+                                    </CheckInUnavailable>
+                                  )
                                 ) : (
-                                  <CheckInUnavailable>
-                                    Check-in not yet available
-                                  </CheckInUnavailable>
-                                )
-                              ) : (
-                                <AttendanceStatus status={student.status}>
-                                  {student.status === "attended"
-                                    ? "Checked In"
-                                    : "Missed"}
-                                </AttendanceStatus>
-                              )}
-                            </div>
-                          </StudentComponent>
-                        );
-                      })
-                    )}
-                  </StudentRoster>
-                )}
-              </ClassCard>
-            ))
-          )}
+                                  <AttendanceStatus status={student.status}>
+                                    {student.status === "attended"
+                                      ? "Checked In"
+                                      : "Missed"}
+                                  </AttendanceStatus>
+                                )}
+                              </div>
+                            </StudentComponent>
+                          );
+                        })
+                      )}
+                    </StudentRoster>
+                  )}
+                </ClassCard>
+              ))
+            )}
+          </AssignedClassesContent>
         </AssignedClassesBox>
 
         {/* Class Schedule Box */}
