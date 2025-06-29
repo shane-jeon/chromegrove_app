@@ -76,58 +76,91 @@ class ClassController:
             return jsonify({"success": False, "error": str(e)}), 500
     
     def book_class(self):
-        """Handle class booking request"""
+        """Book a class for a student"""
         try:
             data = request.get_json()
+            print("[book_class] Incoming booking request:", data)
             if not data:
+                print("[book_class] ❌ Missing JSON body")
                 return jsonify({"success": False, "error": "Missing JSON body"}), 400
             
             student_id = data.get('student_id')
             clerk_user_id = data.get('clerk_user_id')
             instance_id = data.get('instance_id')
+            payment_id = data.get('payment_id')
+            payment_type = data.get('payment_type', 'drop-in')  # 'drop-in', 'membership', 'staff'
+            print(f"[book_class] clerk_user_id from request: {clerk_user_id}")
+            print(f"[book_class] student_id from request: {student_id}")
+            print(f"[book_class] instance_id from request: {instance_id}")
+            print(f"[book_class] payment_type from request: {payment_type}")
             
             if not instance_id:
+                print("[book_class] ❌ Missing instance_id")
                 return jsonify({"success": False, "error": "Missing instance_id"}), 400
             
-            # Find student
+            # Get student
             student = None
             if student_id:
+                print(f"[book_class] Looking up student by student_id: {student_id}")
                 student = self.user_service.get_user_by_id(student_id)
+                print(f"[book_class] Student lookup result by id: {student}")
                 if student and student.discriminator != 'student':
+                    print(f"[book_class] ❌ User with id {student_id} is not a student")
                     student = None
             elif clerk_user_id:
+                print(f"[book_class] Looking up student by clerk_user_id: {clerk_user_id}")
                 student = self.user_service.get_user_by_clerk_id(clerk_user_id)
+                print(f"[book_class] Student lookup result by clerk_user_id: {student}")
                 if student and student.discriminator != 'student':
+                    print(f"[book_class] ❌ User with clerk_user_id {clerk_user_id} is not a student")
                     student = None
             
             if not student:
+                print(f"[book_class] ❌ Student not found for clerk_user_id: {clerk_user_id} or student_id: {student_id}")
                 return jsonify({"success": False, "error": "Student not found"}), 404
+            print(f"[book_class] ✅ Found student: id={student.id}, clerk_user_id={student.clerk_user_id}, membership_id={student.membership_id}, type={getattr(student, 'discriminator', None)}")
             
-            # Get class instance to check start time
-            class_instance = self.class_service.get_instance_by_id(instance_id)
-            if not class_instance:
-                return jsonify({"success": False, "error": "Class instance not found"}), 404
+            # If payment_type is 'membership', check membership status
+            if payment_type == 'membership':
+                membership_status = self.membership_service.get_membership_status(student.clerk_user_id)
+                print(f"[book_class] Membership status: {membership_status}")
+                if not membership_status.get('has_membership', False) or not membership_status.get('is_active', False):
+                    print("[book_class] ❌ Membership expired or inactive. Requires drop-in payment.")
+                    return jsonify({
+                        "success": False,
+                        "error": "Membership expired or inactive. Please use drop-in payment.",
+                        "requires_payment": True
+                    }), 400
+            # Always allow drop-in bookings
+            print(f"[book_class] Proceeding to book class for student_id={student.id}, instance_id={instance_id}, payment_type={payment_type}")
+            try:
+                success = self.class_service.book_class(
+                    student.id, 
+                    instance_id, 
+                    payment_id,
+                    payment_type
+                )
+                print(f"[book_class] Booking result: {success}")
+            except Exception as e:
+                print(f"[book_class] ❌ Exception during booking: {e}")
+                import traceback
+                print(traceback.format_exc())
+                return jsonify({"success": False, "error": str(e)}), 500
             
-            # Check if student can book this class for free based on membership expiration
-            booking_eligibility = self.membership_service.can_book_class_for_free(
-                clerk_user_id or student.clerk_user_id, 
-                class_instance.start_time
-            )
-            
-            # Check if student has active membership (for backward compatibility)
-            has_membership = self.membership_service.has_active_membership(clerk_user_id or student.clerk_user_id)
-            
-            # Book the class
-            self.class_service.book_class(student.id, instance_id)
-            
-            return jsonify({
-                "success": True,
-                "message": "Class booked successfully",
-                "has_membership": has_membership,
-                "booking_eligibility": booking_eligibility
-            })
-            
+            if success:
+                print(f"[book_class] ✅ Class booked successfully for student_id={student.id}, instance_id={instance_id}")
+                return jsonify({
+                    "success": True,
+                    "message": "Class booked successfully"
+                })
+            else:
+                print(f"[book_class] ❌ Failed to book class for student_id={student.id}, instance_id={instance_id}")
+                return jsonify({"success": False, "error": "Failed to book class"}), 400
+                
         except Exception as e:
+            print(f"[book_class] ❌ Exception: {e}")
+            import traceback
+            print(traceback.format_exc())
             return jsonify({"success": False, "error": str(e)}), 500
     
     def book_class_for_staff(self):
@@ -184,23 +217,31 @@ class ClassController:
         try:
             student_id = request.args.get('student_id')
             clerk_user_id = request.args.get('clerk_user_id')
+            print(f"[get_student_enrolled_classes] clerk_user_id: {clerk_user_id}, student_id: {student_id}")
             
             # Find student
             student = None
             if student_id:
                 student = self.user_service.get_user_by_id(student_id)
                 if student and student.discriminator != 'student':
+                    print(f"[get_student_enrolled_classes] ❌ User with id {student_id} is not a student")
                     student = None
             elif clerk_user_id:
                 student = self.user_service.get_user_by_clerk_id(clerk_user_id)
                 if student and student.discriminator != 'student':
+                    print(f"[get_student_enrolled_classes] ❌ User with clerk_user_id {clerk_user_id} is not a student")
                     student = None
             
             if not student:
+                print(f"[get_student_enrolled_classes] ❌ Student not found for clerk_user_id: {clerk_user_id} or student_id: {student_id}")
                 return jsonify({"success": False, "error": "Student not found"}), 404
+            print(f"[get_student_enrolled_classes] ✅ Found student: id={student.id}, clerk_user_id={student.clerk_user_id}, membership_id={student.membership_id}")
             
             # Get enrollments
             enrollments = self.class_service.get_student_enrollments(student.id)
+            print(f"[get_student_enrolled_classes] Found {len(enrollments)} enrollments for student_id={student.id}")
+            for e in enrollments:
+                print(f"  Enrollment: id={e.id}, instance_id={e.instance_id}, payment_type={e.payment_type}, status={e.status}")
             
             # Get instances and studio classes
             instances = []
@@ -230,13 +271,14 @@ class ClassController:
                     enrollment.id if enrollment else None
                 )
                 class_dtos.append(instance_dto.to_dict())
-            
+            print(f"[get_student_enrolled_classes] Returning {len(class_dtos)} class DTOs for student_id={student.id}")
             return jsonify({
                 "success": True,
                 "classes": class_dtos
             })
             
         except Exception as e:
+            print(f"[get_student_enrolled_classes] ❌ Exception: {e}")
             return jsonify({"success": False, "error": str(e)}), 500
     
     def cancel_enrollment(self):
@@ -530,7 +572,7 @@ class ClassController:
             if scope not in ['single', 'future']:
                 return jsonify({"success": False, "error": "Invalid scope. Must be 'single' or 'future'"}), 400
             
-            # Cancel the class(es)
+            # Cancel the class(es) and add credits for eligible students
             if scope == 'single':
                 self.class_service.cancel_single_instance(instance_id)
             else:
