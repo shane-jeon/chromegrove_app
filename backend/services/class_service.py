@@ -129,6 +129,15 @@ class ClassService:
             
             print(f"[book_class] ✅ No existing enrollment found, proceeding with booking")
             
+            # Handle credit-based booking
+            if payment_type == 'credit':
+                print(f"[book_class] 💳 Processing credit-based booking")
+                credit = self.credit_service.use_credit(student_id)
+                if not credit:
+                    print(f"[book_class] ❌ No available credits for student {student_id}")
+                    raise ValueError("No available credits")
+                print(f"[book_class] ✅ Credit used - credit_id: {credit.id}")
+            
             # Add student to class with payment type
             enrollment = ClassEnrollment(
                 student_id=student_id,
