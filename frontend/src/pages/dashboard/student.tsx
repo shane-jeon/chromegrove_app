@@ -3,6 +3,7 @@ import styled from "styled-components";
 import { useUser } from "@clerk/nextjs";
 import ClassScheduleList from "../../components/ClassScheduleList";
 import MembershipBox from "../../components/MembershipBox";
+import ClassCreditBox from "../../components/ClassCreditBox";
 import BulletinBoard, {
   type AnnouncementItem,
 } from "../../components/BulletinBoard";
@@ -21,6 +22,7 @@ interface ClassItem {
   recommended_attire?: string;
   is_enrolled?: boolean;
   enrollment_id?: number;
+  payment_type?: string;
 }
 
 interface SlidingScaleOption {
@@ -553,26 +555,145 @@ export default function StudentDashboard() {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successLoading, setSuccessLoading] = useState(false);
+  const [successModalContent, setSuccessModalContent] = useState<{
+    title: string;
+    message: string;
+    subMessage?: string;
+  } | null>(null);
   const [refreshingData, setRefreshingData] = useState(false);
   const [classToCancel, setClassToCancel] = useState<ClassItem | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [creditCount, setCreditCount] = useState<number>(0);
+  const [selectedClassForCredit, setSelectedClassForCredit] =
+    useState<ClassItem | null>(null);
   const [showCreditModal, setShowCreditModal] = useState(false);
-  const [creditLoading, setCreditLoading] = useState(false);
-  const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
+  const [creditRefreshTrigger, setCreditRefreshTrigger] = useState(0);
   const [isMounted, setIsMounted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  console.log("🔍 Current state:", {
-    showPaymentModal,
-    paymentModalTriggeredByBooking,
-    showCancelModal,
-    showSuccessModal,
-    selectedClass: isClassItem(selectedOption)
-      ? selectedOption?.class_name
-      : "N/A",
-    user: user?.id,
-  });
+  const showBookingSuccessModal = (
+    paymentType: "credit" | "membership" | "staff" | "drop-in",
+    remainingCredits?: number,
+  ) => {
+    let content;
+
+    switch (paymentType) {
+      case "credit":
+        content = {
+          title: "You're booked for this class",
+          message: "1 class credit was used for this booking.",
+          subMessage:
+            remainingCredits !== undefined
+              ? `You now have ${remainingCredits} credit${
+                  remainingCredits !== 1 ? "s" : ""
+                } remaining.`
+              : undefined,
+        };
+        break;
+      case "membership":
+        content = {
+          title: "Booking confirmed",
+          message: "This class has been booked using your active membership.",
+          subMessage:
+            "Cancel at least 6 hours before class to avoid a $15 fee.",
+        };
+        break;
+      case "staff":
+        content = {
+          title: "Booking confirmed",
+          message: "This class has been booked using your staff membership.",
+          subMessage:
+            "Attendance will be logged differently for staff bookings.",
+        };
+        break;
+      case "drop-in":
+        content = {
+          title: "You're booked for this class",
+          message: "Thank you for your payment. You are now registered.",
+          subMessage: "A confirmation email has been sent.",
+        };
+        break;
+      default:
+        content = {
+          title: "Class Booked!",
+          message:
+            "Your class has been booked successfully! You can view it in your upcoming classes.",
+        };
+    }
+
+    setSuccessModalContent(content);
+    setShowSuccessModal(true);
+    setTimeout(() => {
+      setShowSuccessModal(false);
+      setSuccessLoading(false);
+    }, 2000);
+  };
+
+  const showCancellationSuccessModal = (
+    paymentType: "credit" | "membership" | "staff" | "drop-in",
+    remainingCredits?: number,
+  ) => {
+    let content;
+
+    switch (paymentType) {
+      case "credit":
+        content = {
+          title: "Cancel Processing...",
+          message: "Your class credit has been restored.",
+          subMessage:
+            remainingCredits !== undefined
+              ? `You now have ${remainingCredits} credit${
+                  remainingCredits !== 1 ? "s" : ""
+                } available.`
+              : "You can use this credit for future bookings.",
+        };
+        break;
+      case "membership":
+        content = {
+          title: "Cancel Processing...",
+          message: "You've successfully canceled your class.",
+          subMessage:
+            "This class has been removed from your schedule. Please cancel at least 6 hours in advance to avoid a fee.",
+        };
+        break;
+      case "staff":
+        content = {
+          title: "Cancel Processing...",
+          message: "You've successfully canceled your class.",
+          subMessage: "This class has been removed from your schedule.",
+        };
+        break;
+      case "drop-in":
+        content = {
+          title: "Cancel Processing...",
+          message:
+            "You've successfully canceled your class. A class credit has been added to your account.",
+          subMessage: "You can use this credit for future bookings.",
+        };
+        break;
+      default:
+        content = {
+          title: "Cancel Processing...",
+          message: "You've successfully canceled your class.",
+          subMessage: "This class has been removed from your schedule.",
+        };
+    }
+
+    setSuccessModalContent(content);
+    setShowSuccessModal(true);
+
+    // For all cancellations, show loading state briefly to simulate processing
+    setSuccessLoading(true);
+    setTimeout(() => {
+      setSuccessLoading(false);
+    }, 1500);
+
+    setTimeout(() => {
+      setShowSuccessModal(false);
+      setSuccessLoading(false);
+    }, 2000);
+  };
+
+  console.log("🟢 student.tsx loaded");
 
   useEffect(() => {
     console.log("🏗️ Component mount effect running");
@@ -890,30 +1011,7 @@ export default function StudentDashboard() {
                 console.error("❌ Error fetching enrolled classes:", error);
               });
 
-            // Fetch student credits
-            fetch(
-              `http://localhost:5000/api/credits/student?clerk_user_id=${user.id}`,
-            )
-              .then((res) => res.json())
-              .then((creditData) => {
-                console.log("📊 Credits response:", creditData);
-                if (creditData.success) {
-                  setCreditCount(creditData.credit_count || 0);
-                  console.log(
-                    "✅ Credits set:",
-                    creditData.credit_count || 0,
-                    "credits",
-                  );
-                } else {
-                  console.error(
-                    "❌ Failed to fetch credits:",
-                    creditData.error,
-                  );
-                }
-              })
-              .catch((error) => {
-                console.error("❌ Error fetching credits:", error);
-              });
+            // Note: Credit fetching is now handled by ClassCreditBox component
           } else {
             console.error("❌ Failed to fetch user:", data.error);
           }
@@ -1058,15 +1156,7 @@ export default function StudentDashboard() {
     console.log("[Booking] Current user object:", currentUser);
     console.log("[Booking] Attempting to book class:", c);
 
-    // Check if student has available credits
-    if (creditCount > 0) {
-      // Show credit confirmation modal
-      setSelectedClass(c);
-      setShowCreditModal(true);
-      return;
-    }
-
-    // Check booking eligibility first
+    // Check membership eligibility first
     try {
       const eligibilityPayload = {
         clerk_user_id: currentUser.clerk_user_id,
@@ -1084,84 +1174,85 @@ export default function StudentDashboard() {
           body: JSON.stringify(eligibilityPayload),
         },
       );
+
       const eligibilityData = await eligibilityResponse.json();
-      console.log("[Booking] Eligibility API response:", eligibilityData);
+      console.log("[Booking] Eligibility response:", eligibilityData);
 
-      if (!eligibilityData.success) {
-        alert(
-          "Failed to check booking eligibility: " +
-            (eligibilityData.error || "Unknown error"),
-        );
-        return;
-      }
+      if (eligibilityData.success) {
+        const bookingEligibility = eligibilityData.booking_eligibility;
+        console.log("[Booking] Booking eligibility:", bookingEligibility);
 
-      const { booking_eligibility } = eligibilityData;
-
-      // If can book for free, book directly
-      if (booking_eligibility.can_book_free) {
-        try {
-          const bookingPayload = {
-            clerk_user_id: currentUser.clerk_user_id,
-            instance_id: c.instance_id,
-            payment_type: "membership",
-          };
+        if (
+          bookingEligibility.can_book_free &&
+          !bookingEligibility.requires_payment
+        ) {
+          // Student has active membership - book directly
           console.log(
-            "[Booking] Sending booking request payload:",
-            bookingPayload,
+            "[Booking] Student has active membership, booking directly",
           );
-          const response = await fetch(
+          const bookingResponse = await fetch(
             "http://localhost:5000/api/studio-classes/book",
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(bookingPayload),
+              body: JSON.stringify({
+                clerk_user_id: currentUser.clerk_user_id,
+                instance_id: c.instance_id,
+                payment_type: "membership",
+              }),
             },
           );
-          const data = await response.json();
-          console.log("[Booking] Booking API response:", data);
-          if (data.success) {
-            // Show confirmation modal
-            setShowSuccessModal(true);
-            setTimeout(() => setShowSuccessModal(false), 2000);
-            // Refresh all class data to update capacity
+
+          const bookingData = await bookingResponse.json();
+          console.log("[Booking] Membership booking response:", bookingData);
+
+          if (bookingData.success) {
+            showBookingSuccessModal("membership");
             await handleManualRefresh();
+            return; // Exit early - booking successful
           } else {
-            alert("Failed to book class: " + (data.error || "Unknown error"));
+            alert(
+              "Failed to book class: " + (bookingData.error || "Unknown error"),
+            );
+            return; // Exit early - booking failed
           }
-        } catch (error) {
-          console.error("[Booking] Error booking class:", error);
-          alert("Failed to book class. Please try again.");
         }
-        return;
+      } else {
+        console.log(
+          "[Booking] Eligibility check failed:",
+          eligibilityData.error,
+        );
       }
+    } catch (error) {
+      console.error("[Booking] Error checking eligibility:", error);
+    }
 
-      // If requires payment, show payment modal
-      if (booking_eligibility.requires_payment) {
-        if (loadingSlidingScale) {
-          alert(
-            "Payment options are still loading. Please wait a moment and try again.",
-          );
-          return;
-        }
+    // If we get here, either no membership or outside membership window
+    // Check if student has available credits
+    try {
+      const creditResponse = await fetch(
+        `http://localhost:5000/api/credits/student?clerk_user_id=${currentUser.clerk_user_id}`,
+      );
+      const creditData = await creditResponse.json();
 
-        if (slidingScaleOptions.length === 0) {
-          alert("No payment options available. Please try again later.");
-          return;
-        }
-
-        setSelectedOption(c);
-        setSelectedClassForPayment(c);
-        setSelectedAmount(0);
-        setPaymentError(null);
-        setShowPaymentModal(true);
-        setPaymentModalTriggeredByBooking(true);
+      if (creditData.success && creditData.credit_count > 0) {
+        // Student has credits - show credit booking modal
+        console.log("[Booking] Student has credits, showing credit modal");
+        setSelectedClassForCredit(c);
+        setShowCreditModal(true);
         return;
       }
     } catch (error) {
-      console.error("[Booking] Error checking booking eligibility:", error);
-      alert("Failed to check booking eligibility. Please try again.");
+      console.error("[Booking] Error checking credits:", error);
     }
-    console.log("handleBookClassClick end");
+
+    // No membership and no credits - show drop-in payment modal
+    console.log(
+      "[Booking] No membership or credits, showing drop-in payment modal",
+    );
+    setSelectedClassForPayment(c);
+    setPaymentModalTriggeredByBooking(true);
+    setShowPaymentModal(true);
   };
 
   const handlePaymentContinue = async () => {
@@ -1367,12 +1458,42 @@ export default function StudentDashboard() {
         // Refresh all class data to update capacity
         await handleManualRefresh();
 
-        // Show success modal
-        setShowSuccessModal(true);
-        setTimeout(() => {
-          setShowSuccessModal(false);
-          setSuccessLoading(false);
-        }, 2000);
+        // Get remaining credits if this was a credit booking
+        let remainingCredits: number | undefined;
+        if (classToCancel.payment_type === "credit") {
+          try {
+            const creditResponse = await fetch(
+              `http://localhost:5000/api/credits/student?clerk_user_id=${user.id}`,
+            );
+            const creditData = await creditResponse.json();
+            if (creditData.success) {
+              remainingCredits = creditData.credit_count;
+            }
+          } catch (error) {
+            console.error("Error fetching credits:", error);
+          }
+        }
+
+        // If this was a drop-in class, refresh credits
+        if (classToCancel.payment_type === "drop-in") {
+          console.log("🔄 Refreshing credits after drop-in cancellation");
+          setCreditRefreshTrigger((prev) => prev + 1);
+        }
+
+        // Show appropriate cancellation success modal
+        const paymentType =
+          (classToCancel.payment_type as
+            | "credit"
+            | "membership"
+            | "staff"
+            | "drop-in") ||
+          (data.payment_type as
+            | "credit"
+            | "membership"
+            | "staff"
+            | "drop-in") ||
+          "drop-in";
+        showCancellationSuccessModal(paymentType, remainingCredits);
       } else {
         console.error("❌ Cancellation failed:", data.error);
         alert(`Error cancelling class: ${data.error}`);
@@ -1386,82 +1507,6 @@ export default function StudentDashboard() {
       setClassToCancel(null);
     }
     console.log("handleConfirmCancel end");
-  };
-
-  const handleUseCredit = async () => {
-    if (!selectedClass || !currentUser) {
-      return;
-    }
-
-    setCreditLoading(true);
-
-    try {
-      // First use a credit
-      const creditResponse = await fetch(
-        "http://localhost:5000/api/credits/use",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            clerk_user_id: currentUser.clerk_user_id,
-          }),
-        },
-      );
-
-      const creditData = await creditResponse.json();
-
-      if (!creditData.success) {
-        alert("Failed to use credit: " + (creditData.error || "Unknown error"));
-        return;
-      }
-
-      // Then book the class
-      const bookingResponse = await fetch(
-        "http://localhost:5000/api/studio-classes/book",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            clerk_user_id: currentUser.clerk_user_id,
-            instance_id: selectedClass.instance_id,
-            payment_type: "drop-in",
-          }),
-        },
-      );
-
-      const bookingData = await bookingResponse.json();
-
-      if (bookingData.success) {
-        // Show success message
-        setShowCreditModal(false);
-        setSelectedClass(null);
-        setShowSuccessModal(true);
-        setTimeout(() => setShowSuccessModal(false), 2000);
-
-        // Refresh all data
-        await handleManualRefresh();
-
-        // Refresh credits
-        if (user) {
-          const refreshCreditResponse = await fetch(
-            `http://localhost:5000/api/credits/student?clerk_user_id=${user.id}`,
-          );
-          const refreshCreditData = await refreshCreditResponse.json();
-          if (refreshCreditData.success) {
-            setCreditCount(refreshCreditData.credit_count || 0);
-          }
-        }
-      } else {
-        alert(
-          "Failed to book class: " + (bookingData.error || "Unknown error"),
-        );
-      }
-    } catch (error) {
-      console.error("Error using credit:", error);
-      alert("Failed to use credit. Please try again.");
-    } finally {
-      setCreditLoading(false);
-    }
   };
 
   // Cleanup effect to reset payment modal state
@@ -1501,30 +1546,29 @@ export default function StudentDashboard() {
         currentUser?.clerk_user_id,
         selectedClassForPayment?.instance_id,
       );
-      // Log class ID, user ID, and booking status
-      if (currentUser) {
-        fetch(
-          `http://localhost:5000/api/students/enrolled-classes?clerk_user_id=${currentUser.id}`,
-        )
-          .then((res) => res.json())
-          .then((data) => {
-            console.log("Enrolled classes after Stripe return:", data.classes);
-            const booked = data.classes?.some(
-              (c: ClassItem) =>
-                c.instance_id === selectedClassForPayment?.instance_id,
-            );
-            console.log(
-              "Class ID:",
-              selectedClassForPayment?.instance_id,
-              "User ID:",
-              currentUser.id,
-              "Booking found:",
-              booked,
-            );
-          });
-      }
+
+      // Show drop-in success modal
+      showBookingSuccessModal("drop-in");
+
+      // Refresh data to show updated enrollment
+      handleManualRefresh();
+
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [currentUser, selectedClassForPayment]);
+
+  const handleSkipCredit = async (classItem: ClassItem) => {
+    console.log(
+      "[handleSkipCredit] Student chose to skip credit and pay drop-in for:",
+      classItem,
+    );
+
+    // Proceed with drop-in payment flow
+    setSelectedClassForPayment(classItem);
+    setPaymentModalTriggeredByBooking(true);
+    setShowPaymentModal(true);
+  };
 
   return (
     <>
@@ -1601,60 +1645,19 @@ export default function StudentDashboard() {
         {/* Right Side - Membership + Bulletin Board */}
         <RightSideContainer>
           <MembershipBox />
-          {creditCount > 0 && (
-            <div
-              style={{
-                background: "white",
-                borderRadius: "12px",
-                padding: "20px",
-                marginBottom: "16px",
-                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-                border: "1px solid #e2e8f0",
-              }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  marginBottom: "12px",
-                }}>
-                <div
-                  style={{
-                    fontSize: "20px",
-                    marginRight: "8px",
-                  }}>
-                  💳
-                </div>
-                <h3
-                  style={{
-                    margin: 0,
-                    fontSize: "16px",
-                    fontWeight: "600",
-                    color: "#2d3748",
-                  }}>
-                  Class Credits
-                </h3>
-              </div>
-              <div
-                style={{
-                  fontSize: "24px",
-                  fontWeight: "700",
-                  color: "#38a169",
-                  marginBottom: "8px",
-                }}>
-                {creditCount}
-              </div>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: "14px",
-                  color: "#718096",
-                  lineHeight: "1.4",
-                }}>
-                Available credit{creditCount !== 1 ? "s" : ""} for drop-in
-                classes. Use them to book classes without payment.
-              </p>
-            </div>
-          )}
+          <ClassCreditBox
+            onCreditUsed={handleManualRefresh}
+            selectedClass={showCreditModal ? selectedClassForCredit : null}
+            onShowCreditModal={(show) => {
+              setShowCreditModal(show);
+              if (!show) {
+                setSelectedClassForCredit(null);
+              }
+            }}
+            onSkipCredit={handleSkipCredit}
+            refreshTrigger={creditRefreshTrigger}
+            onShowBookingSuccess={showBookingSuccessModal}
+          />
           <BulletinBoard announcements={announcements} />
         </RightSideContainer>
       </DashboardContainer>
@@ -1816,20 +1819,30 @@ export default function StudentDashboard() {
             {successLoading ? (
               <>
                 <LoadingSpinner />
-                <SuccessTitle>Processing Payment...</SuccessTitle>
+                <SuccessTitle>
+                  We&apos;re updating your schedule...
+                </SuccessTitle>
                 <SuccessMessage>
-                  Please wait while we verify your payment and update your
+                  Please wait while we process your cancellation and update your
                   schedule.
                 </SuccessMessage>
               </>
             ) : (
               <>
                 <SuccessIcon>✅</SuccessIcon>
-                <SuccessTitle>Class Booked!</SuccessTitle>
+                <SuccessTitle>
+                  {successModalContent?.title || "Success!"}
+                </SuccessTitle>
                 <SuccessMessage>
-                  Your class has been booked successfully! You can view it in
-                  your upcoming classes.
+                  {successModalContent?.message ||
+                    "Operation completed successfully!"}
                 </SuccessMessage>
+                {successModalContent?.subMessage && (
+                  <SuccessMessage
+                    style={{ fontSize: "14px", color: "#718096" }}>
+                    {successModalContent.subMessage}
+                  </SuccessMessage>
+                )}
                 <SuccessButton onClick={() => setShowSuccessModal(false)}>
                   Continue
                 </SuccessButton>
@@ -1873,6 +1886,48 @@ export default function StudentDashboard() {
                   This action cannot be undone. You will need to re-enroll if
                   you change your mind.
                 </p>
+                {classToCancel.payment_type === "drop-in" && (
+                  <div
+                    style={{
+                      background: "#f0fff4",
+                      padding: "16px",
+                      borderRadius: "8px",
+                      border: "1px solid #9ae6b4",
+                      marginBottom: "16px",
+                      color: "#22543d",
+                    }}>
+                    <strong>Studio Policy:</strong> You will receive a class
+                    credit as a refund for this drop-in booking cancellation.
+                  </div>
+                )}
+                {classToCancel.payment_type === "credit" && (
+                  <div
+                    style={{
+                      background: "#f0fff4",
+                      padding: "16px",
+                      borderRadius: "8px",
+                      border: "1px solid #9ae6b4",
+                      marginBottom: "16px",
+                      color: "#22543d",
+                    }}>
+                    <strong>Credit Policy:</strong> Your class credit will be
+                    restored and can be used for future bookings.
+                  </div>
+                )}
+                {classToCancel.payment_type === "membership" && (
+                  <div
+                    style={{
+                      background: "#fff5f5",
+                      padding: "16px",
+                      borderRadius: "8px",
+                      border: "1px solid #fed7d7",
+                      marginBottom: "16px",
+                      color: "#c53030",
+                    }}>
+                    <strong>Membership Policy:</strong> Please cancel at least 6
+                    hours in advance to avoid a $15 fee.
+                  </div>
+                )}
                 <div
                   style={{
                     background: "#f7fafc",
@@ -1902,81 +1957,6 @@ export default function StudentDashboard() {
                 onClick={handleConfirmCancel}
                 style={{ background: "#e53e3e" }}>
                 Cancel Enrollment
-              </ModalButton>
-            </ModalActions>
-          </ModalContent>
-        </ModalOverlay>
-      )}
-
-      {/* Credit Confirmation Modal */}
-      {showCreditModal && selectedClass && (
-        <ModalOverlay onClick={() => setShowCreditModal(false)}>
-          <ModalContent onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <CloseButton onClick={() => setShowCreditModal(false)}>
-                &times;
-              </CloseButton>
-              <ModalTitle>Use Class Credit</ModalTitle>
-              <ModalSubtitle>
-                You have {creditCount} available credit
-                {creditCount !== 1 ? "s" : ""}. Use one to book this class?
-              </ModalSubtitle>
-            </ModalHeader>
-
-            <div style={{ flex: 1, marginBottom: "32px" }}>
-              <div style={{ textAlign: "center", padding: "20px" }}>
-                <p style={{ color: "#4a5568", marginBottom: "16px" }}>
-                  Using a credit will book this class without requiring payment.
-                </p>
-                <div
-                  style={{
-                    background: "#f7fafc",
-                    padding: "16px",
-                    borderRadius: "8px",
-                    border: "1px solid #e2e8f0",
-                  }}>
-                  <strong>Class Details:</strong>
-                  <br />
-                  {selectedClass.class_name}
-                  <br />
-                  {formatClassDate(selectedClass.start_time)} at{" "}
-                  {formatClassTime(
-                    selectedClass.start_time,
-                    selectedClass.duration,
-                  )}
-                </div>
-                <div
-                  style={{
-                    background: "#e6fffa",
-                    padding: "12px",
-                    borderRadius: "6px",
-                    border: "1px solid #81e6d9",
-                    marginTop: "12px",
-                    fontSize: "14px",
-                  }}>
-                  💳 You will use 1 of your {creditCount} available credit
-                  {creditCount !== 1 ? "s" : ""}
-                </div>
-              </div>
-            </div>
-
-            <ModalActions>
-              <ModalButton onClick={() => setShowCreditModal(false)}>
-                Cancel
-              </ModalButton>
-              <ModalButton
-                primary={true}
-                onClick={handleUseCredit}
-                disabled={creditLoading}
-                style={{ background: "#38a169" }}>
-                {creditLoading ? (
-                  <>
-                    <LoadingSpinner />
-                    Using Credit...
-                  </>
-                ) : (
-                  "Use Credit & Book Class"
-                )}
               </ModalButton>
             </ModalActions>
           </ModalContent>
