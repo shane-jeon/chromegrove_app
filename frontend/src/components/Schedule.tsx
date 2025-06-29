@@ -103,11 +103,18 @@ const Schedule: React.FC<ScheduleProps> = ({
             <Calendar
               value={selectedDate}
               onChange={(date) => setSelectedDate(date as Date)}
-              tileClassName={({ date, view }) =>
-                view === "month" && isSameDay(date, selectedDate)
-                  ? "calendar-selected-day"
-                  : undefined
-              }
+              tileClassName={({ date, view }) => {
+                let className = "";
+                if (view === "month") {
+                  if (isSameDay(date, selectedDate)) {
+                    className += "calendar-selected-day ";
+                  }
+                  if (isSameDay(date, new Date())) {
+                    className += "calendar-today ";
+                  }
+                }
+                return className || undefined;
+              }}
               tileContent={({ date, view }) => {
                 if (
                   view === "month" &&
@@ -120,6 +127,12 @@ const Schedule: React.FC<ScheduleProps> = ({
                 return null;
               }}
               showNeighboringMonth={false}
+              calendarType="gregory"
+              formatShortWeekday={(locale, date) => {
+                const days = ["S", "M", "T", "W", "T", "F", "S"];
+                return days[date.getDay()];
+              }}
+              className="modern-calendar"
             />
             <div className="calendar-classes">
               <h3 className="calendar-classes-title">

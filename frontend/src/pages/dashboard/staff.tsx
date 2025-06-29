@@ -6,6 +6,7 @@ import StaffBookingModal from "../../components/StaffBookingModal";
 import BulletinBoard, {
   type AnnouncementItem,
 } from "../../components/BulletinBoard";
+import LoadingSpinner from "../../components/LoadingSpinner";
 
 interface AssignedClass {
   instance_id: string;
@@ -792,7 +793,7 @@ export default function StaffDashboard() {
     return (
       <DashboardContainer>
         <div style={{ textAlign: "center", width: "100%" }}>
-          <p>Loading staff dashboard...</p>
+          <LoadingSpinner text="Loading staff dashboard..." size="medium" />
         </div>
       </DashboardContainer>
     );

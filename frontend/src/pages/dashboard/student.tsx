@@ -7,6 +7,7 @@ import ClassCreditBox from "../../components/ClassCreditBox";
 import BulletinBoard, {
   type AnnouncementItem,
 } from "../../components/BulletinBoard";
+import LoadingSpinner from "../../components/LoadingSpinner";
 
 interface ClassItem {
   instance_id: string;
@@ -410,24 +411,6 @@ const ModalButton = styled.button<{ primary?: boolean; loading?: boolean }>`
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
-  }
-`;
-
-const LoadingSpinner = styled.div`
-  width: 16px;
-  height: 16px;
-  border: 2px solid transparent;
-  border-top: 2px solid currentColor;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-
-  @keyframes spin {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
   }
 `;
 
@@ -1637,7 +1620,7 @@ export default function StudentDashboard() {
                 textAlign: "center",
                 boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
               }}>
-              <div style={{ color: "#718096" }}>Loading...</div>
+              <LoadingSpinner text="Loading..." size="medium" />
             </div>
           )}
         </ScheduleContainer>
@@ -1701,7 +1684,10 @@ export default function StudentDashboard() {
                       padding: "40px",
                       color: "#718096",
                     }}>
-                    <p>Loading payment options...</p>
+                    <LoadingSpinner
+                      text="Loading payment options..."
+                      size="small"
+                    />
                   </div>
                 ) : slidingScaleOptions.length === 0 ? (
                   <div
@@ -1800,7 +1786,7 @@ export default function StudentDashboard() {
                   onClick={handlePaymentContinue}>
                   {paymentLoading ? (
                     <>
-                      <LoadingSpinner />
+                      <LoadingSpinner size="small" />
                       Processing...
                     </>
                   ) : (
@@ -1818,7 +1804,7 @@ export default function StudentDashboard() {
           <SuccessModalContent onClick={(e) => e.stopPropagation()}>
             {successLoading ? (
               <>
-                <LoadingSpinner />
+                <LoadingSpinner size="small" />
                 <SuccessTitle>
                   We&apos;re updating your schedule...
                 </SuccessTitle>
@@ -1856,7 +1842,7 @@ export default function StudentDashboard() {
       {refreshingData && (
         <LoadingOverlay>
           <LoadingContent>
-            <LoadingSpinner />
+            <LoadingSpinner size="medium" />
             <div
               style={{ fontSize: "16px", color: "#4a5568", marginTop: "16px" }}>
               Updating your schedule...

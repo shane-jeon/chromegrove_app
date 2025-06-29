@@ -2,6 +2,7 @@ import { SignIn } from "@clerk/nextjs";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import LoadingSpinner from "../../components/LoadingSpinner";
 
 export default function SignInPage() {
   const { user, isSignedIn, isLoaded } = useUser();
@@ -33,8 +34,11 @@ export default function SignInPage() {
 
   if (checkingRole) {
     return (
-      <div className="mt-10 flex justify-center text-lg text-purple-700">
-        Checking your role and redirecting...
+      <div className="mt-10 flex justify-center">
+        <LoadingSpinner
+          text="Checking your role and redirecting..."
+          size="medium"
+        />
       </div>
     );
   }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 interface ClassItem {
   instance_id: string;
@@ -114,7 +115,7 @@ export default function Home() {
             padding: "40px",
             color: "#718096",
           }}>
-          <div>Loading upcoming classes...</div>
+          <LoadingSpinner text="Loading upcoming classes..." size="medium" />
         </div>
       ) : classes.length === 0 ? (
         <div
