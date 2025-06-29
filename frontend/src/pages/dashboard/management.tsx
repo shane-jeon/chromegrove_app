@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import AddClassDropdownForm, {
+import AddClassModal, {
   type AddClassForm,
-} from "../../components/AddClassDropdownForm";
+} from "../../components/AddClassModal";
 import AddAnnouncementModal, {
   type AddAnnouncementForm,
 } from "../../components/AddAnnouncementModal";
@@ -37,7 +37,7 @@ interface Instructor {
 }
 
 export default function ManagementDashboard() {
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [showAddClassModal, setShowAddClassModal] = useState(false);
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedClassForDeletion, setSelectedClassForDeletion] =
@@ -61,6 +61,21 @@ export default function ManagementDashboard() {
   const [staffList, setStaffList] = useState<Instructor[]>([]);
   const [showInstructors, setShowInstructors] = useState(false);
 
+  // Reset form to initial state
+  const resetForm = () => {
+    setForm({
+      class_name: "",
+      description: "",
+      start_time: "",
+      duration: 60,
+      instructor_id: "",
+      max_capacity: 20,
+      requirements: "",
+      recommended_attire: "",
+      recurrence_pattern: "",
+    });
+  };
+
   // Fetch all classes on mount
   useEffect(() => {
     fetch("http://localhost:5000/api/studio-classes/list")
@@ -77,14 +92,14 @@ export default function ManagementDashboard() {
       .then((data) => setAnnouncements(data.announcements || []));
   }, []);
 
-  // Fetch all staff when dropdown opens
+  // Fetch all staff when modal opens
   useEffect(() => {
-    if (showDropdown) {
+    if (showAddClassModal) {
       fetch("http://localhost:5000/api/instructors/search?query=")
         .then((res) => res.json())
         .then((data) => setStaffList(data.instructors || []));
     }
-  }, [showDropdown]);
+  }, [showAddClassModal]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -129,18 +144,8 @@ export default function ManagementDashboard() {
       if (instancesData.success) {
         setClasses(instancesData.classes || []);
       }
-      setShowDropdown(false);
-      setForm({
-        class_name: "",
-        description: "",
-        start_time: "",
-        duration: 60,
-        instructor_id: "",
-        max_capacity: 20,
-        requirements: "",
-        recommended_attire: "",
-        recurrence_pattern: "",
-      });
+      setShowAddClassModal(false);
+      resetForm();
     } else {
       alert("Failed to create class: " + (data.error || "Unknown error"));
     }
@@ -248,28 +253,81 @@ export default function ManagementDashboard() {
           <div className="flex flex-1 flex-col items-center justify-start gap-6">
             {/* Management Controls */}
             <div className="flex w-full flex-col items-center gap-4">
-              <button
-                className={`add-class-btn mb-2 flex items-center rounded-full px-8 py-3 text-lg font-semibold text-white shadow transition gap-2${
-                  showDropdown ? " open" : ""
-                }`}
-                style={{
-                  background: "#805ad5",
-                  border: "none",
-                  cursor: "pointer",
+              {/* Button Group Container */}
+              <div className="flex w-full flex-wrap items-center justify-center gap-4">
+                <button
+                  className="add-class-btn flex items-center gap-2 rounded-full px-8 py-3 text-lg font-semibold text-white shadow transition"
+                  style={{
+                    background: "#805ad5",
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#6b46c1";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "#805ad5";
+                  }}
+                  onClick={() => setShowAddClassModal(true)}
+                  type="button">
+                  + Add Class
+                </button>
+
+                {/* Add Announcement Button */}
+                <button
+                  className="add-class-btn flex items-center gap-2 rounded-full px-8 py-3 text-lg font-semibold text-white shadow transition"
+                  style={{
+                    background: "#805ad5",
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#6b46c1";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "#805ad5";
+                  }}
+                  onClick={() => setShowAnnouncementModal(true)}
+                  type="button">
+                  📢 Add Announcement
+                </button>
+
+                {/* Instructors Button and Dropdown */}
+                <button
+                  className="add-class-btn flex items-center gap-2 rounded-full px-8 py-3 text-lg font-semibold text-white shadow transition"
+                  style={{
+                    background: "#805ad5",
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#6b46c1";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "#805ad5";
+                  }}
+                  onClick={async () => {
+                    if (!staffList.length) {
+                      // Fetch staff if not already loaded
+                      const res = await fetch(
+                        "http://localhost:5000/api/instructors/search?query=",
+                      );
+                      const data = await res.json();
+                      setStaffList(data.instructors || []);
+                    }
+                    setShowInstructors((prev) => !prev);
+                  }}
+                  type="button">
+                  Instructors <span className="arrow">▼</span>
+                </button>
+              </div>
+
+              <AddClassModal
+                show={showAddClassModal}
+                onClose={() => {
+                  setShowAddClassModal(false);
+                  resetForm();
                 }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#6b46c1";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#805ad5";
-                }}
-                onClick={() => setShowDropdown((prev) => !prev)}
-                type="button">
-                + Add Class <span className="arrow">▼</span>
-              </button>
-              <AddClassDropdownForm
-                show={showDropdown}
-                onClose={() => setShowDropdown(false)}
                 onSubmit={handleSubmit}
                 form={form}
                 staffList={staffList}
@@ -278,53 +336,6 @@ export default function ManagementDashboard() {
                 handleChange={handleChange}
               />
 
-              {/* Add Announcement Button */}
-              <button
-                className="add-class-btn flex items-center gap-2 rounded-full px-8 py-3 text-lg font-semibold text-white shadow transition"
-                style={{
-                  background: "#805ad5",
-                  border: "none",
-                  cursor: "pointer",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#6b46c1";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#805ad5";
-                }}
-                onClick={() => setShowAnnouncementModal(true)}
-                type="button">
-                📢 Add Announcement
-              </button>
-
-              {/* Instructors Button and Dropdown */}
-              <button
-                className="add-class-btn flex items-center gap-2 rounded-full px-8 py-3 text-lg font-semibold text-white shadow transition"
-                style={{
-                  background: "#805ad5",
-                  border: "none",
-                  cursor: "pointer",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#6b46c1";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#805ad5";
-                }}
-                onClick={async () => {
-                  if (!staffList.length) {
-                    // Fetch staff if not already loaded
-                    const res = await fetch(
-                      "http://localhost:5000/api/instructors/search?query=",
-                    );
-                    const data = await res.json();
-                    setStaffList(data.instructors || []);
-                  }
-                  setShowInstructors((prev) => !prev);
-                }}
-                type="button">
-                Instructors <span className="arrow">▼</span>
-              </button>
               {showInstructors && (
                 <div className="dropdown-form-panel dropdown-form-animate mt-2 w-full max-w-md">
                   <div className="dropdown-form-header-bar mb-2 font-semibold text-purple-700">
