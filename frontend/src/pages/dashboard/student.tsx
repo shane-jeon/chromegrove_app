@@ -33,6 +33,22 @@ interface SlidingScaleOption {
   stripe_price_id?: string;
 }
 
+// Type for selected option that can be either a ClassItem or SlidingScaleOption
+type SelectedOptionType = ClassItem | SlidingScaleOption;
+
+// Type guards
+function isClassItem(
+  option: SelectedOptionType | null | undefined,
+): option is ClassItem {
+  return !!option && "instance_id" in option && "class_name" in option;
+}
+
+function isSlidingScaleOption(
+  option: SelectedOptionType | null | undefined,
+): option is SlidingScaleOption {
+  return !!option && "tier_name" in option && "price_min" in option;
+}
+
 interface User {
   id: number;
   clerk_user_id: string;
@@ -518,43 +534,43 @@ export default function StudentDashboard() {
   const { user } = useUser();
   const [allClasses, setAllClasses] = useState<ClassItem[]>([]);
   const [enrolledClasses, setEnrolledClasses] = useState<ClassItem[]>([]);
-  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loadingSlidingScale, setLoadingSlidingScale] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>("studio");
+  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [slidingScaleOptions, setSlidingScaleOptions] = useState<
     SlidingScaleOption[]
   >([]);
-
-  // Modal state
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
+  const [loadingSlidingScale, setLoadingSlidingScale] = useState(false);
   const [selectedOption, setSelectedOption] =
-    useState<SlidingScaleOption | null>(null);
+    useState<SelectedOptionType | null>(null);
   const [selectedAmount, setSelectedAmount] = useState<number>(0);
-  const [paymentLoading, setPaymentLoading] = useState(false);
-  const [paymentError, setPaymentError] = useState<string>("");
+  const [selectedClassForPayment, setSelectedClassForPayment] =
+    useState<ClassItem | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentModalTriggeredByBooking, setPaymentModalTriggeredByBooking] =
     useState(false);
-
-  // Success modal and loading states
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [classToCancel, setClassToCancel] = useState<ClassItem | null>(null);
   const [successLoading, setSuccessLoading] = useState(false);
   const [refreshingData, setRefreshingData] = useState(false);
-
-  // Track if component is mounted to fix initial styling
+  const [classToCancel, setClassToCancel] = useState<ClassItem | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [creditCount, setCreditCount] = useState<number>(0);
+  const [showCreditModal, setShowCreditModal] = useState(false);
+  const [creditLoading, setCreditLoading] = useState(false);
+  const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
   const [isMounted, setIsMounted] = useState(false);
-
-  // Tab state
-  const [activeTab, setActiveTab] = useState<TabType>("studio");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   console.log("🔍 Current state:", {
     showPaymentModal,
     paymentModalTriggeredByBooking,
     showCancelModal,
     showSuccessModal,
-    selectedClass: selectedClass?.class_name,
+    selectedClass: isClassItem(selectedOption)
+      ? selectedOption?.class_name
+      : "N/A",
     user: user?.id,
   });
 
@@ -570,10 +586,10 @@ export default function StudentDashboard() {
       console.log("👤 User changed, resetting payment modal state");
       setShowPaymentModal(false);
       setPaymentModalTriggeredByBooking(false);
-      setSelectedClass(null);
       setSelectedOption(null);
+      setSelectedClassForPayment(null);
       setSelectedAmount(0);
-      setPaymentError("");
+      setPaymentError(null);
     }
   }, [user]);
 
@@ -583,10 +599,10 @@ export default function StudentDashboard() {
     if (showPaymentModal && !paymentModalTriggeredByBooking) {
       console.log("🚨 Payment modal shown without booking trigger - resetting");
       setShowPaymentModal(false);
-      setSelectedClass(null);
       setSelectedOption(null);
+      setSelectedClassForPayment(null);
       setSelectedAmount(0);
-      setPaymentError("");
+      setPaymentError(null);
     }
   }, [showPaymentModal, paymentModalTriggeredByBooking]);
 
@@ -600,10 +616,10 @@ export default function StudentDashboard() {
         );
         setShowPaymentModal(false);
         setPaymentModalTriggeredByBooking(false);
-        setSelectedClass(null);
         setSelectedOption(null);
+        setSelectedClassForPayment(null);
         setSelectedAmount(0);
-        setPaymentError("");
+        setPaymentError(null);
       }
     }, 1000); // Check every second
 
@@ -619,7 +635,7 @@ export default function StudentDashboard() {
     if (showPaymentModal) {
       console.log(
         "💰 Payment modal opened - selected class:",
-        selectedClass?.class_name,
+        isClassItem(selectedOption) ? selectedOption?.class_name : "N/A",
       );
       console.log(
         "💰 Payment modal triggered by booking:",
@@ -636,7 +652,7 @@ export default function StudentDashboard() {
     }
   }, [
     showPaymentModal,
-    selectedClass,
+    selectedOption,
     paymentModalTriggeredByBooking,
     showCancelModal,
     showSuccessModal,
@@ -738,18 +754,27 @@ export default function StudentDashboard() {
         `http://localhost:5000/api/students/enrolled-classes?clerk_user_id=${user.id}`,
       );
       const data = await response.json();
-
       if (data.success) {
         setEnrolledClasses(data.classes || []);
+        setErrorMessage(null);
         console.log(
           "✅ Enrolled classes refreshed:",
           data.classes?.length || 0,
           "classes",
         );
       } else {
+        setEnrolledClasses([]);
+        setErrorMessage(
+          data.error ||
+            "No classes found for your account. Please contact support if this is unexpected.",
+        );
         console.error("❌ Failed to refresh enrolled classes:", data.error);
       }
     } catch (error) {
+      setEnrolledClasses([]);
+      setErrorMessage(
+        "Failed to load your classes. Please check your connection or contact support.",
+      );
       console.error("❌ Error refreshing enrolled classes:", error);
     } finally {
       setRefreshingData(false);
@@ -846,6 +871,11 @@ export default function StudentDashboard() {
                     "classes",
                   );
                 } else {
+                  setEnrolledClasses([]);
+                  setErrorMessage(
+                    enrolledData.error ||
+                      "No classes found for your account. Please contact support if this is unexpected.",
+                  );
                   console.error(
                     "❌ Failed to fetch enrolled classes:",
                     enrolledData.error,
@@ -853,7 +883,36 @@ export default function StudentDashboard() {
                 }
               })
               .catch((error) => {
+                setEnrolledClasses([]);
+                setErrorMessage(
+                  "Failed to load your classes. Please check your connection or contact support.",
+                );
                 console.error("❌ Error fetching enrolled classes:", error);
+              });
+
+            // Fetch student credits
+            fetch(
+              `http://localhost:5000/api/credits/student?clerk_user_id=${user.id}`,
+            )
+              .then((res) => res.json())
+              .then((creditData) => {
+                console.log("📊 Credits response:", creditData);
+                if (creditData.success) {
+                  setCreditCount(creditData.credit_count || 0);
+                  console.log(
+                    "✅ Credits set:",
+                    creditData.credit_count || 0,
+                    "credits",
+                  );
+                } else {
+                  console.error(
+                    "❌ Failed to fetch credits:",
+                    creditData.error,
+                  );
+                }
+              })
+              .catch((error) => {
+                console.error("❌ Error fetching credits:", error);
               });
           } else {
             console.error("❌ Failed to fetch user:", data.error);
@@ -995,21 +1054,38 @@ export default function StudentDashboard() {
       return;
     }
 
+    // Log the user and intended booking
+    console.log("[Booking] Current user object:", currentUser);
+    console.log("[Booking] Attempting to book class:", c);
+
+    // Check if student has available credits
+    if (creditCount > 0) {
+      // Show credit confirmation modal
+      setSelectedClass(c);
+      setShowCreditModal(true);
+      return;
+    }
+
     // Check booking eligibility first
     try {
+      const eligibilityPayload = {
+        clerk_user_id: currentUser.clerk_user_id,
+        instance_id: c.instance_id,
+      };
+      console.log(
+        "[Booking] Sending eligibility check payload:",
+        eligibilityPayload,
+      );
       const eligibilityResponse = await fetch(
         "http://localhost:5000/api/studio-classes/check-eligibility",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            clerk_user_id: currentUser.clerk_user_id,
-            instance_id: c.instance_id,
-          }),
+          body: JSON.stringify(eligibilityPayload),
         },
       );
-
       const eligibilityData = await eligibilityResponse.json();
+      console.log("[Booking] Eligibility API response:", eligibilityData);
 
       if (!eligibilityData.success) {
         alert(
@@ -1024,18 +1100,25 @@ export default function StudentDashboard() {
       // If can book for free, book directly
       if (booking_eligibility.can_book_free) {
         try {
+          const bookingPayload = {
+            clerk_user_id: currentUser.clerk_user_id,
+            instance_id: c.instance_id,
+            payment_type: "membership",
+          };
+          console.log(
+            "[Booking] Sending booking request payload:",
+            bookingPayload,
+          );
           const response = await fetch(
             "http://localhost:5000/api/studio-classes/book",
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                clerk_user_id: currentUser.clerk_user_id,
-                instance_id: c.instance_id,
-              }),
+              body: JSON.stringify(bookingPayload),
             },
           );
           const data = await response.json();
+          console.log("[Booking] Booking API response:", data);
           if (data.success) {
             // Show confirmation modal
             setShowSuccessModal(true);
@@ -1046,7 +1129,7 @@ export default function StudentDashboard() {
             alert("Failed to book class: " + (data.error || "Unknown error"));
           }
         } catch (error) {
-          console.error("Error booking class:", error);
+          console.error("[Booking] Error booking class:", error);
           alert("Failed to book class. Please try again.");
         }
         return;
@@ -1066,42 +1149,84 @@ export default function StudentDashboard() {
           return;
         }
 
-        setSelectedClass(c);
-        setSelectedOption(null);
+        setSelectedOption(c);
+        setSelectedClassForPayment(c);
         setSelectedAmount(0);
-        setPaymentError("");
+        setPaymentError(null);
         setShowPaymentModal(true);
         setPaymentModalTriggeredByBooking(true);
         return;
       }
     } catch (error) {
-      console.error("Error checking booking eligibility:", error);
+      console.error("[Booking] Error checking booking eligibility:", error);
       alert("Failed to check booking eligibility. Please try again.");
     }
     console.log("handleBookClassClick end");
   };
 
   const handlePaymentContinue = async () => {
-    console.log("handlePaymentContinue called");
-    if (!currentUser || !selectedClass) {
+    console.log("💰 [handlePaymentContinue] 🔍 Called");
+    console.log("💰 [handlePaymentContinue] 📋 Current state:");
+    console.log("💰 [handlePaymentContinue] 📋   - currentUser:", currentUser);
+    console.log(
+      "💰 [handlePaymentContinue] 📋   - selectedOption:",
+      selectedOption,
+    );
+    console.log(
+      "💰 [handlePaymentContinue] 📋   - selectedAmount:",
+      selectedAmount,
+    );
+
+    if (!currentUser || !selectedOption) {
+      console.log(
+        "💰 [handlePaymentContinue] ❌ Missing currentUser or selectedOption",
+      );
       return;
     }
 
     // Validate selection
     if (!selectedOption) {
+      console.log("💰 [handlePaymentContinue] ❌ No selectedOption");
       setPaymentError("Please select a payment tier");
       return;
     }
 
     if (selectedAmount <= 0) {
+      console.log(
+        "💰 [handlePaymentContinue] ❌ Invalid selectedAmount:",
+        selectedAmount,
+      );
       setPaymentError("Please select a valid payment amount");
       return;
     }
 
+    console.log(
+      "💰 [handlePaymentContinue] ✅ Validation passed, starting payment process",
+    );
     setPaymentLoading(true);
-    setPaymentError("");
+    setPaymentError(null);
 
     try {
+      // Use type guards to safely access properties
+      const optionId = isSlidingScaleOption(selectedOption)
+        ? selectedOption.id
+        : null;
+      const className = selectedClassForPayment?.class_name || "";
+      const instanceId = selectedClassForPayment?.instance_id || "";
+
+      const requestBody = {
+        student_id: currentUser.id,
+        option_id: optionId,
+        class_name: className,
+        instance_id: instanceId,
+        custom_amount: selectedAmount,
+      };
+
+      console.log(
+        "💰 [handlePaymentContinue] 📤 Sending request to /create-checkout-session",
+      );
+      console.log("💰 [handlePaymentContinue] 📤 Request body:", requestBody);
+
       const response = await fetch(
         "http://localhost:5000/create-checkout-session",
         {
@@ -1109,33 +1234,45 @@ export default function StudentDashboard() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            student_id: currentUser.id,
-            option_id: selectedOption?.id || null,
-            class_name: selectedClass.class_name,
-            instance_id: selectedClass.instance_id,
-            custom_amount: selectedAmount,
-          }),
+          body: JSON.stringify(requestBody),
         },
       );
 
+      console.log("💰 [handlePaymentContinue] 📥 Response received");
       const data = await response.json();
-
+      console.log("💰 [handlePaymentContinue] 📥 Response data:", data);
+      // Log Stripe session creation for drop-in
       if (data.success && data.url) {
+        console.log("Stripe session created with drop-in rate:", data);
+        console.log(
+          "Class ID:",
+          selectedClassForPayment?.instance_id,
+          "User ID:",
+          currentUser.id,
+        );
+        console.log("Redirecting to Stripe checkout...");
         window.location.href = data.url;
       } else {
+        console.log(
+          "💰 [handlePaymentContinue] ❌ Failed to create checkout session",
+        );
+        console.log("💰 [handlePaymentContinue] ❌ Error:", data.error);
         setPaymentError(
           "Failed to create checkout session: " +
             (data.error || "Unknown error"),
         );
       }
     } catch (error) {
-      console.error("Error creating checkout session:", error);
+      console.error(
+        "💰 [handlePaymentContinue] ❌ Error creating checkout session:",
+        error,
+      );
       setPaymentError("Failed to create checkout session. Please try again.");
     } finally {
+      console.log("💰 [handlePaymentContinue] 🏁 Payment process completed");
       setPaymentLoading(false);
     }
-    console.log("handlePaymentContinue end");
+    console.log("💰 [handlePaymentContinue] 🏁 Function end");
   };
 
   const handleTierSelect = (option: SlidingScaleOption) => {
@@ -1143,12 +1280,12 @@ export default function StudentDashboard() {
     // Start at the middle of the price range instead of max
     const middlePrice = Math.round((option.price_min + option.price_max) / 2);
     setSelectedAmount(middlePrice);
-    setPaymentError("");
+    setPaymentError(null);
   };
 
   const handleAmountChange = (amount: number) => {
     setSelectedAmount(amount);
-    setPaymentError("");
+    setPaymentError(null);
   };
 
   const isPaymentValid = () => {
@@ -1167,10 +1304,10 @@ export default function StudentDashboard() {
     // Ensure payment modal is closed when cancelling
     setShowPaymentModal(false);
     setPaymentModalTriggeredByBooking(false);
-    setSelectedClass(null);
     setSelectedOption(null);
+    setSelectedClassForPayment(null);
     setSelectedAmount(0);
-    setPaymentError("");
+    setPaymentError(null);
 
     // Show cancel confirmation modal
     setClassToCancel(c);
@@ -1222,10 +1359,10 @@ export default function StudentDashboard() {
         // Ensure payment modal is still closed
         setShowPaymentModal(false);
         setPaymentModalTriggeredByBooking(false);
-        setSelectedClass(null);
         setSelectedOption(null);
+        setSelectedClassForPayment(null);
         setSelectedAmount(0);
-        setPaymentError("");
+        setPaymentError(null);
 
         // Refresh all class data to update capacity
         await handleManualRefresh();
@@ -1251,6 +1388,82 @@ export default function StudentDashboard() {
     console.log("handleConfirmCancel end");
   };
 
+  const handleUseCredit = async () => {
+    if (!selectedClass || !currentUser) {
+      return;
+    }
+
+    setCreditLoading(true);
+
+    try {
+      // First use a credit
+      const creditResponse = await fetch(
+        "http://localhost:5000/api/credits/use",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            clerk_user_id: currentUser.clerk_user_id,
+          }),
+        },
+      );
+
+      const creditData = await creditResponse.json();
+
+      if (!creditData.success) {
+        alert("Failed to use credit: " + (creditData.error || "Unknown error"));
+        return;
+      }
+
+      // Then book the class
+      const bookingResponse = await fetch(
+        "http://localhost:5000/api/studio-classes/book",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            clerk_user_id: currentUser.clerk_user_id,
+            instance_id: selectedClass.instance_id,
+            payment_type: "drop-in",
+          }),
+        },
+      );
+
+      const bookingData = await bookingResponse.json();
+
+      if (bookingData.success) {
+        // Show success message
+        setShowCreditModal(false);
+        setSelectedClass(null);
+        setShowSuccessModal(true);
+        setTimeout(() => setShowSuccessModal(false), 2000);
+
+        // Refresh all data
+        await handleManualRefresh();
+
+        // Refresh credits
+        if (user) {
+          const refreshCreditResponse = await fetch(
+            `http://localhost:5000/api/credits/student?clerk_user_id=${user.id}`,
+          );
+          const refreshCreditData = await refreshCreditResponse.json();
+          if (refreshCreditData.success) {
+            setCreditCount(refreshCreditData.credit_count || 0);
+          }
+        }
+      } else {
+        alert(
+          "Failed to book class: " + (bookingData.error || "Unknown error"),
+        );
+      }
+    } catch (error) {
+      console.error("Error using credit:", error);
+      alert("Failed to use credit. Please try again.");
+    } finally {
+      setCreditLoading(false);
+    }
+  };
+
   // Cleanup effect to reset payment modal state
   useEffect(() => {
     return () => {
@@ -1258,10 +1471,10 @@ export default function StudentDashboard() {
       console.log("🧹 Component unmounting - resetting payment modal state");
       setShowPaymentModal(false);
       setPaymentModalTriggeredByBooking(false);
-      setSelectedClass(null);
       setSelectedOption(null);
+      setSelectedClassForPayment(null);
       setSelectedAmount(0);
-      setPaymentError("");
+      setPaymentError(null);
     };
   }, []);
 
@@ -1276,9 +1489,62 @@ export default function StudentDashboard() {
     }
   };
 
+  // Check for Stripe payment success in URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentStatus = urlParams.get("payment");
+    const sessionId = urlParams.get("session_id");
+    if (paymentStatus === "success" && sessionId) {
+      console.log("Returned from Stripe. Payment status:", paymentStatus);
+      console.log(
+        "Attempting to confirm booking for:",
+        currentUser?.clerk_user_id,
+        selectedClassForPayment?.instance_id,
+      );
+      // Log class ID, user ID, and booking status
+      if (currentUser) {
+        fetch(
+          `http://localhost:5000/api/students/enrolled-classes?clerk_user_id=${currentUser.id}`,
+        )
+          .then((res) => res.json())
+          .then((data) => {
+            console.log("Enrolled classes after Stripe return:", data.classes);
+            const booked = data.classes?.some(
+              (c: ClassItem) =>
+                c.instance_id === selectedClassForPayment?.instance_id,
+            );
+            console.log(
+              "Class ID:",
+              selectedClassForPayment?.instance_id,
+              "User ID:",
+              currentUser.id,
+              "Booking found:",
+              booked,
+            );
+          });
+      }
+    }
+  }, [currentUser, selectedClassForPayment]);
+
   return (
     <>
       <DashboardContainer>
+        {/* Error Message Display */}
+        {errorMessage && (
+          <div
+            style={{
+              background: "#fed7d7",
+              color: "#c53030",
+              padding: "16px",
+              borderRadius: "8px",
+              marginBottom: "16px",
+              border: "1px solid #feb2b2",
+              fontWeight: 600,
+              textAlign: "center",
+            }}>
+            {errorMessage}
+          </div>
+        )}
         {/* Left Side - Class Schedule */}
         <ScheduleContainer>
           {isMounted ? (
@@ -1335,6 +1601,60 @@ export default function StudentDashboard() {
         {/* Right Side - Membership + Bulletin Board */}
         <RightSideContainer>
           <MembershipBox />
+          {creditCount > 0 && (
+            <div
+              style={{
+                background: "white",
+                borderRadius: "12px",
+                padding: "20px",
+                marginBottom: "16px",
+                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                border: "1px solid #e2e8f0",
+              }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  marginBottom: "12px",
+                }}>
+                <div
+                  style={{
+                    fontSize: "20px",
+                    marginRight: "8px",
+                  }}>
+                  💳
+                </div>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: "16px",
+                    fontWeight: "600",
+                    color: "#2d3748",
+                  }}>
+                  Class Credits
+                </h3>
+              </div>
+              <div
+                style={{
+                  fontSize: "24px",
+                  fontWeight: "700",
+                  color: "#38a169",
+                  marginBottom: "8px",
+                }}>
+                {creditCount}
+              </div>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "14px",
+                  color: "#718096",
+                  lineHeight: "1.4",
+                }}>
+                Available credit{creditCount !== 1 ? "s" : ""} for drop-in
+                classes. Use them to book classes without payment.
+              </p>
+            </div>
+          )}
           <BulletinBoard announcements={announcements} />
         </RightSideContainer>
       </DashboardContainer>
@@ -1393,7 +1713,11 @@ export default function StudentDashboard() {
                   slidingScaleOptions.map((option) => (
                     <TierCard
                       key={option.id}
-                      selected={selectedOption?.id === option.id}
+                      selected={
+                        isSlidingScaleOption(selectedOption)
+                          ? selectedOption.id === option.id
+                          : false
+                      }
                       onClick={() => handleTierSelect(option)}>
                       <TierHeader>
                         <TierName>{option.tier_name}</TierName>
@@ -1406,7 +1730,8 @@ export default function StudentDashboard() {
                         <SliderLabel>
                           <SliderValue>
                             $
-                            {selectedOption?.id === option.id
+                            {isSlidingScaleOption(selectedOption) &&
+                            selectedOption.id === option.id
                               ? selectedAmount
                               : Math.round(
                                   (option.price_min + option.price_max) / 2,
@@ -1422,7 +1747,8 @@ export default function StudentDashboard() {
                           max={option.price_max}
                           step={1}
                           value={
-                            selectedOption?.id === option.id
+                            isSlidingScaleOption(selectedOption) &&
+                            selectedOption.id === option.id
                               ? selectedAmount
                               : Math.round(
                                   (option.price_min + option.price_max) / 2,
@@ -1430,7 +1756,10 @@ export default function StudentDashboard() {
                           }
                           onChange={(e) => {
                             const newAmount = parseInt(e.target.value);
-                            if (selectedOption?.id === option.id) {
+                            if (
+                              isSlidingScaleOption(selectedOption) &&
+                              selectedOption.id === option.id
+                            ) {
                               handleAmountChange(newAmount);
                             } else {
                               // If this tier is not selected, select it and set the amount
@@ -1440,7 +1769,7 @@ export default function StudentDashboard() {
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (selectedOption?.id !== option.id) {
+                            if (!isSlidingScaleOption(selectedOption)) {
                               handleTierSelect(option);
                             }
                           }}
@@ -1573,6 +1902,81 @@ export default function StudentDashboard() {
                 onClick={handleConfirmCancel}
                 style={{ background: "#e53e3e" }}>
                 Cancel Enrollment
+              </ModalButton>
+            </ModalActions>
+          </ModalContent>
+        </ModalOverlay>
+      )}
+
+      {/* Credit Confirmation Modal */}
+      {showCreditModal && selectedClass && (
+        <ModalOverlay onClick={() => setShowCreditModal(false)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <CloseButton onClick={() => setShowCreditModal(false)}>
+                &times;
+              </CloseButton>
+              <ModalTitle>Use Class Credit</ModalTitle>
+              <ModalSubtitle>
+                You have {creditCount} available credit
+                {creditCount !== 1 ? "s" : ""}. Use one to book this class?
+              </ModalSubtitle>
+            </ModalHeader>
+
+            <div style={{ flex: 1, marginBottom: "32px" }}>
+              <div style={{ textAlign: "center", padding: "20px" }}>
+                <p style={{ color: "#4a5568", marginBottom: "16px" }}>
+                  Using a credit will book this class without requiring payment.
+                </p>
+                <div
+                  style={{
+                    background: "#f7fafc",
+                    padding: "16px",
+                    borderRadius: "8px",
+                    border: "1px solid #e2e8f0",
+                  }}>
+                  <strong>Class Details:</strong>
+                  <br />
+                  {selectedClass.class_name}
+                  <br />
+                  {formatClassDate(selectedClass.start_time)} at{" "}
+                  {formatClassTime(
+                    selectedClass.start_time,
+                    selectedClass.duration,
+                  )}
+                </div>
+                <div
+                  style={{
+                    background: "#e6fffa",
+                    padding: "12px",
+                    borderRadius: "6px",
+                    border: "1px solid #81e6d9",
+                    marginTop: "12px",
+                    fontSize: "14px",
+                  }}>
+                  💳 You will use 1 of your {creditCount} available credit
+                  {creditCount !== 1 ? "s" : ""}
+                </div>
+              </div>
+            </div>
+
+            <ModalActions>
+              <ModalButton onClick={() => setShowCreditModal(false)}>
+                Cancel
+              </ModalButton>
+              <ModalButton
+                primary={true}
+                onClick={handleUseCredit}
+                disabled={creditLoading}
+                style={{ background: "#38a169" }}>
+                {creditLoading ? (
+                  <>
+                    <LoadingSpinner />
+                    Using Credit...
+                  </>
+                ) : (
+                  "Use Credit & Book Class"
+                )}
               </ModalButton>
             </ModalActions>
           </ModalContent>
