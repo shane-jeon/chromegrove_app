@@ -38,7 +38,8 @@ class MembershipService:
                 "membership_type": membership.membership_type,
                 "start_date": membership.start_date.isoformat(),
                 "end_date": membership.end_date.isoformat() if membership.end_date else None,
-                "is_active": membership.is_active()
+                "is_active": membership.is_active(),
+                "expires_at": membership.end_date.isoformat() if membership.end_date else None
             }
             print(f"[membership_service] Returning result: {result}")
             return result
@@ -226,4 +227,49 @@ class MembershipService:
             
             return session
         except Exception as e:
-            raise e 
+            raise e
+    
+    def can_book_class_for_free(self, clerk_user_id: str, class_start_time: datetime) -> Dict[str, Any]:
+        """Check if student can book a class for free based on membership expiration vs class date"""
+        try:
+            membership_status = self.get_membership_status(clerk_user_id)
+            
+            if not membership_status.get("has_membership", False):
+                return {
+                    "can_book_free": False,
+                    "reason": "No active membership",
+                    "requires_payment": True
+                }
+            
+            # Get membership end date
+            end_date_str = membership_status.get("end_date")
+            if not end_date_str:
+                return {
+                    "can_book_free": False,
+                    "reason": "Membership has no expiration date",
+                    "requires_payment": True
+                }
+            
+            # Parse dates
+            membership_end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
+            class_date = class_start_time.replace(tzinfo=None)  # Remove timezone for comparison
+            membership_end_date = membership_end_date.replace(tzinfo=None)
+            
+            # Check if class is on or before membership expiration
+            can_book_free = class_date <= membership_end_date
+            
+            return {
+                "can_book_free": can_book_free,
+                "reason": "Class is after membership expiration" if not can_book_free else "Class is within membership period",
+                "requires_payment": not can_book_free,
+                "membership_end_date": membership_end_date.isoformat(),
+                "class_date": class_date.isoformat()
+            }
+            
+        except Exception as e:
+            print(f"[membership_service] Error checking free booking eligibility: {e}")
+            return {
+                "can_book_free": False,
+                "reason": f"Error checking eligibility: {str(e)}",
+                "requires_payment": True
+            } 

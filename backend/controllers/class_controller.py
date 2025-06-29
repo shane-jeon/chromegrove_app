@@ -103,7 +103,18 @@ class ClassController:
             if not student:
                 return jsonify({"success": False, "error": "Student not found"}), 404
             
-            # Check if student has active membership
+            # Get class instance to check start time
+            class_instance = self.class_service.get_instance_by_id(instance_id)
+            if not class_instance:
+                return jsonify({"success": False, "error": "Class instance not found"}), 404
+            
+            # Check if student can book this class for free based on membership expiration
+            booking_eligibility = self.membership_service.can_book_class_for_free(
+                clerk_user_id or student.clerk_user_id, 
+                class_instance.start_time
+            )
+            
+            # Check if student has active membership (for backward compatibility)
             has_membership = self.membership_service.has_active_membership(clerk_user_id or student.clerk_user_id)
             
             # Book the class
@@ -112,7 +123,8 @@ class ClassController:
             return jsonify({
                 "success": True,
                 "message": "Class booked successfully",
-                "has_membership": has_membership
+                "has_membership": has_membership,
+                "booking_eligibility": booking_eligibility
             })
             
         except Exception as e:
@@ -367,6 +379,48 @@ class ClassController:
             return jsonify({
                 "success": True,
                 "classes": [dto.to_dict() for dto in instance_dtos]
+            })
+            
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+    
+    def check_booking_eligibility(self):
+        """Check if student can book a class for free based on membership expiration"""
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({"success": False, "error": "Missing JSON body"}), 400
+            
+            clerk_user_id = data.get('clerk_user_id')
+            instance_id = data.get('instance_id')
+            
+            if not clerk_user_id or not instance_id:
+                return jsonify({"success": False, "error": "Missing clerk_user_id or instance_id"}), 400
+            
+            # Find student
+            student = self.user_service.get_user_by_clerk_id(clerk_user_id)
+            if not student or student.discriminator != 'student':
+                return jsonify({"success": False, "error": "Student not found"}), 404
+            
+            # Get class instance to check start time
+            class_instance = self.class_service.get_instance_by_id(instance_id)
+            if not class_instance:
+                return jsonify({"success": False, "error": "Class instance not found"}), 404
+            
+            # Check booking eligibility
+            booking_eligibility = self.membership_service.can_book_class_for_free(
+                clerk_user_id, 
+                class_instance.start_time
+            )
+            
+            return jsonify({
+                "success": True,
+                "booking_eligibility": booking_eligibility,
+                "class_info": {
+                    "instance_id": instance_id,
+                    "class_name": class_instance.studio_class.class_name if class_instance.studio_class else "Unknown",
+                    "start_time": class_instance.start_time.isoformat()
+                }
             })
             
         except Exception as e:
