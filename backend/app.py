@@ -15,6 +15,7 @@ from services.payment_service import PaymentService
 from controllers.user_controller import UserController
 from controllers.class_controller import ClassController
 from controllers.payment_controller import PaymentController
+from controllers.membership_controller import MembershipController
 
 # Import DTOs
 from dtos.user_dto import UserDTO
@@ -40,6 +41,7 @@ STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 user_controller = UserController()
 class_controller = ClassController()
 payment_controller = PaymentController()
+membership_controller = MembershipController()
 
 @app.route('/api/ping')
 def ping():
@@ -115,6 +117,23 @@ def get_all_sliding_scale_options():
 @app.route('/api/sliding-scale-options', methods=['POST'])
 def create_sliding_scale_option():
     return payment_controller.create_sliding_scale_option()
+
+# Membership routes using MembershipController
+@app.route('/api/membership/status', methods=['POST'])
+def get_membership_status():
+    return membership_controller.get_membership_status()
+
+@app.route('/api/membership/create', methods=['POST'])
+def create_membership():
+    return membership_controller.create_membership()
+
+@app.route('/api/membership/cancel', methods=['POST'])
+def cancel_membership():
+    return membership_controller.cancel_membership()
+
+@app.route('/api/membership/options', methods=['GET'])
+def get_membership_options():
+    return membership_controller.get_membership_options()
 
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout_session():

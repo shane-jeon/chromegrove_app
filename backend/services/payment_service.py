@@ -1,4 +1,4 @@
-from models import db, Payment, SlidingScaleOption
+from models import db, Payment, SlidingScaleOption, Membership, Student
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 import stripe
@@ -138,21 +138,82 @@ class PaymentService:
                 if payment:
                     payment.status = 'completed'
                     db.session.commit()
-                    # Enroll the student in the class instance if not already enrolled
-                    print(f"[verify_payment] Attempting enrollment: student_id={payment.student_id}, instance_id={payment.instance_id}, payment_id={payment.id}")
-                    if payment.student_id and payment.instance_id:
+                    
+                    # Check if this is a membership payment
+                    if payment.class_name and 'Membership' in payment.class_name:
+                        print(f"[verify_payment] Processing membership payment")
                         try:
-                            result = ClassService().book_class(payment.student_id, payment.instance_id, payment.id)
-                            print(f"[verify_payment] Enrollment result: {result}")
+                            # Activate membership directly
+                            PaymentService._activate_membership(payment.id)
+                            print(f"[verify_payment] Membership activated successfully")
                         except Exception as e:
-                            print(f"[verify_payment] Enrollment error: {e}")
+                            print(f"[verify_payment] Membership activation error: {e}")
                     else:
-                        print(f"[verify_payment] Missing student_id or instance_id for enrollment")
+                        # Enroll the student in the class instance if not already enrolled
+                        print(f"[verify_payment] Attempting enrollment: student_id={payment.student_id}, instance_id={payment.instance_id}, payment_id={payment.id}")
+                        if payment.student_id and payment.instance_id:
+                            try:
+                                result = ClassService().book_class(payment.student_id, payment.instance_id, payment.id)
+                                print(f"[verify_payment] Enrollment result: {result}")
+                            except Exception as e:
+                                print(f"[verify_payment] Enrollment error: {e}")
+                        else:
+                            print(f"[verify_payment] Missing student_id or instance_id for enrollment")
                     return payment
             return None
         except Exception as e:
             print(f"[verify_payment] Exception: {e}")
             raise e
+    
+    @staticmethod
+    def _activate_membership(payment_id: int) -> bool:
+        """Activate membership after successful payment"""
+        try:
+            payment = db.session.get(Payment, payment_id)
+            if not payment:
+                raise ValueError("Payment not found")
+            
+            if payment.status != 'completed':
+                raise ValueError("Payment not completed")
+            
+            # Get student
+            student = Student.query.get(payment.student_id)
+            if not student:
+                raise ValueError("Student not found")
+            
+            # Create or update membership
+            membership_type = payment.sliding_scale_option.tier_name
+            start_date = datetime.utcnow()
+            
+            # Calculate end date based on membership type
+            from datetime import timedelta
+            if 'monthly' in membership_type.lower():
+                end_date = start_date + timedelta(days=30)
+            elif 'annual' in membership_type.lower():
+                end_date = start_date + timedelta(days=365)
+            else:
+                # Default to monthly
+                end_date = start_date + timedelta(days=30)
+            
+            # Create new membership
+            membership = Membership(
+                membership_type=membership_type,
+                start_date=start_date,
+                end_date=end_date
+            )
+            
+            db.session.add(membership)
+            db.session.flush()  # Get the membership ID
+            
+            # Assign membership to student
+            student.membership_id = membership.id
+            db.session.commit()
+            
+            return True
+            
+        except Exception as e:
+            db.session.rollback()
+            raise Exception(f"Error activating membership: {str(e)}")
     
     @staticmethod
     def handle_webhook_event(event: Dict[str, Any]) -> bool:
@@ -166,6 +227,9 @@ class PaymentService:
                     if payment:
                         payment.status = 'completed'
                         db.session.commit()
+                        # Activate membership if this is a membership payment
+                        if payment.class_name and 'Membership' in payment.class_name:
+                            PaymentService._activate_membership(payment.id)
                         return True
             return False
         except Exception as e:

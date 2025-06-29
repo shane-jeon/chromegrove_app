@@ -1,6 +1,7 @@
 from flask import jsonify, request
 from services.class_service import ClassService
 from services.user_service import UserService
+from services.membership_service import MembershipService
 from dtos.class_dto import StudioClassDTO, ClassInstanceDTO
 from dtos.user_dto import UserDTO
 from typing import Dict, Any
@@ -12,6 +13,7 @@ class ClassController:
     def __init__(self):
         self.class_service = ClassService()
         self.user_service = UserService()
+        self.membership_service = MembershipService()
     
     def create_studio_class(self):
         """Handle studio class creation request"""
@@ -101,12 +103,16 @@ class ClassController:
             if not student:
                 return jsonify({"success": False, "error": "Student not found"}), 404
             
+            # Check if student has active membership
+            has_membership = self.membership_service.has_active_membership(clerk_user_id or student.clerk_user_id)
+            
             # Book the class
             self.class_service.book_class(student.id, instance_id)
             
             return jsonify({
                 "success": True,
-                "message": "Class booked successfully"
+                "message": "Class booked successfully",
+                "has_membership": has_membership
             })
             
         except Exception as e:
