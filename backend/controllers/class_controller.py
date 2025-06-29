@@ -268,7 +268,8 @@ class ClassController:
                     instance, 
                     studio_class, 
                     True, 
-                    enrollment.id if enrollment else None
+                    enrollment.id if enrollment else None,
+                    enrollment.payment_type if enrollment else None
                 )
                 class_dtos.append(instance_dto.to_dict())
             print(f"[get_student_enrolled_classes] Returning {len(class_dtos)} class DTOs for student_id={student.id}")
@@ -309,12 +310,26 @@ class ClassController:
             if not student:
                 return jsonify({"success": False, "error": "Student not found"}), 404
             
+            # Get enrollment to check payment type before cancellation
+            from models import ClassEnrollment
+            enrollment = ClassEnrollment.query.filter_by(
+                student_id=student.id,
+                instance_id=instance_id,
+                status='enrolled'
+            ).first()
+            
+            if not enrollment:
+                return jsonify({"success": False, "error": "Enrollment not found"}), 404
+            
+            payment_type = enrollment.payment_type
+            
             # Cancel enrollment
             self.class_service.cancel_enrollment(student.id, instance_id)
             
             return jsonify({
                 "success": True,
-                "message": "Enrollment cancelled successfully"
+                "message": "Enrollment cancelled successfully",
+                "payment_type": payment_type
             })
             
         except Exception as e:
@@ -584,4 +599,90 @@ class ClassController:
             })
             
         except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+    
+    def book_class_with_credit(self):
+        """Book a class for a student using a class credit"""
+        from flask import request, jsonify
+        try:
+            data = request.get_json()
+            print("[book_class_with_credit] Incoming booking request:", data)
+            if not data:
+                print("[book_class_with_credit] ❌ Missing JSON body")
+                return jsonify({"success": False, "error": "Missing JSON body"}), 400
+
+            student_id = data.get('student_id')
+            clerk_user_id = data.get('clerk_user_id')
+            instance_id = data.get('instance_id')
+            print(f"[book_class_with_credit] clerk_user_id from request: {clerk_user_id}")
+            print(f"[book_class_with_credit] student_id from request: {student_id}")
+            print(f"[book_class_with_credit] instance_id from request: {instance_id}")
+
+            if not instance_id:
+                print("[book_class_with_credit] ❌ Missing instance_id")
+                return jsonify({"success": False, "error": "Missing instance_id"}), 400
+
+            # Get student
+            student = None
+            if student_id:
+                student = self.user_service.get_user_by_id(student_id)
+                if student and student.discriminator != 'student':
+                    student = None
+            elif clerk_user_id:
+                student = self.user_service.get_user_by_clerk_id(clerk_user_id)
+                if student and student.discriminator != 'student':
+                    student = None
+
+            if not student:
+                print("[book_class_with_credit] ❌ Student not found")
+                return jsonify({"success": False, "error": "Student not found"}), 404
+
+            # Use a credit (atomic with booking)
+            try:
+                from services.credit_service import CreditService
+                from models import db, ClassEnrollment
+                credit_service = CreditService()
+                credit = credit_service.use_credit(student.id)
+                if not credit:
+                    db.session.rollback()
+                    print("[book_class_with_credit] ❌ No available credits")
+                    return jsonify({"success": False, "error": "No available credits"}), 400
+                print(f"[book_class_with_credit] ✅ Credit used - id: {credit.id}, created_at: {credit.created_at}, reason: {credit.reason}")
+
+                # Check if already enrolled
+                existing_enrollment = ClassEnrollment.query.filter_by(
+                    student_id=student.id,
+                    instance_id=instance_id,
+                    status='enrolled'
+                ).first()
+                if existing_enrollment:
+                    db.session.rollback()
+                    print(f"[book_class_with_credit] ❌ Student already enrolled - enrollment_id: {existing_enrollment.id}")
+                    return jsonify({"success": False, "error": "Student already enrolled"}), 400
+
+                # Create enrollment with payment_type='credit'
+                enrollment = ClassEnrollment(
+                    student_id=student.id,
+                    instance_id=instance_id,
+                    payment_id=None,
+                    payment_type='credit',
+                    status='enrolled'
+                )
+                db.session.add(enrollment)
+                db.session.commit()
+                print(f"[book_class_with_credit] ✅ Booking confirmed with credit - enrollment_id: {enrollment.id}")
+                return jsonify({
+                    "success": True,
+                    "message": "Class booked using class credit.",
+                    "enrollment_id": enrollment.id,
+                    "credit_id": credit.id
+                })
+            except Exception as e:
+                db.session.rollback()
+                print(f"[book_class_with_credit] ❌ Exception during credit booking: {e}")
+                import traceback
+                print(traceback.format_exc())
+                return jsonify({"success": False, "error": str(e)}), 500
+        except Exception as e:
+            print(f"[book_class_with_credit] ❌ Exception: {e}")
             return jsonify({"success": False, "error": str(e)}), 500 
