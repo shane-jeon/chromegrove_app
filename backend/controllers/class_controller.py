@@ -130,6 +130,55 @@ class ClassController:
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
     
+    def book_class_for_staff(self):
+        """Handle staff class booking request (no payment required)"""
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({"success": False, "error": "Missing JSON body"}), 400
+            
+            staff_id = data.get('staff_id')
+            clerk_user_id = data.get('clerk_user_id')
+            instance_id = data.get('instance_id')
+            
+            if not instance_id:
+                return jsonify({"success": False, "error": "Missing instance_id"}), 400
+            
+            # Find staff member
+            staff_member = None
+            if staff_id:
+                staff_member = self.user_service.get_user_by_id(staff_id)
+                if staff_member and staff_member.discriminator != 'staff':
+                    staff_member = None
+            elif clerk_user_id:
+                staff_member = self.user_service.get_user_by_clerk_id(clerk_user_id)
+                if staff_member and staff_member.discriminator != 'staff':
+                    staff_member = None
+            
+            if not staff_member:
+                return jsonify({"success": False, "error": "Staff member not found"}), 404
+            
+            # Get class instance to check if it exists
+            class_instance = self.class_service.get_instance_by_id(instance_id)
+            if not class_instance:
+                return jsonify({"success": False, "error": "Class instance not found"}), 404
+            
+            # Book the class for staff (no payment required)
+            self.class_service.book_class_for_staff(staff_member.id, instance_id)
+            
+            return jsonify({
+                "success": True,
+                "message": "Class booked successfully for staff member",
+                "staff_member": {
+                    "id": staff_member.id,
+                    "name": staff_member.name,
+                    "email": staff_member.email
+                }
+            })
+            
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+    
     def get_student_enrolled_classes(self):
         """Handle get student enrolled classes request"""
         try:
@@ -421,6 +470,45 @@ class ClassController:
                     "class_name": class_instance.studio_class.class_name if class_instance.studio_class else "Unknown",
                     "start_time": class_instance.start_time.isoformat()
                 }
+            })
+            
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+    
+    def cancel_staff_booking(self):
+        """Handle staff booking cancellation request"""
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({"success": False, "error": "Missing JSON body"}), 400
+            
+            staff_id = data.get('staff_id')
+            clerk_user_id = data.get('clerk_user_id')
+            instance_id = data.get('instance_id')
+            
+            if not instance_id:
+                return jsonify({"success": False, "error": "Missing instance_id"}), 400
+            
+            # Find staff member
+            staff = None
+            if staff_id:
+                staff = self.user_service.get_user_by_id(staff_id)
+                if staff and staff.discriminator != 'staff':
+                    staff = None
+            elif clerk_user_id:
+                staff = self.user_service.get_user_by_clerk_id(clerk_user_id)
+                if staff and staff.discriminator != 'staff':
+                    staff = None
+            
+            if not staff:
+                return jsonify({"success": False, "error": "Staff member not found"}), 404
+            
+            # Cancel enrollment
+            self.class_service.cancel_enrollment(staff.id, instance_id)
+            
+            return jsonify({
+                "success": True,
+                "message": "Booking cancelled successfully"
             })
             
         except Exception as e:

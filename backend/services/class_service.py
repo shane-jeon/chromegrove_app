@@ -125,6 +125,40 @@ class ClassService:
             db.session.rollback()
             raise e
     
+    def book_class_for_staff(self, staff_id: int, instance_id: str) -> bool:
+        """Book a class for a staff member (no payment required)"""
+        try:
+            instance = self.get_instance_by_id(instance_id)
+            if not instance:
+                raise ValueError("Class instance not found")
+            
+            if instance.is_full:
+                raise ValueError("Class is full")
+            
+            # Check if staff is already enrolled
+            from models import ClassEnrollment
+            existing_enrollment = ClassEnrollment.query.filter_by(
+                student_id=staff_id,
+                instance_id=instance_id,
+                status='enrolled'
+            ).first()
+            
+            if existing_enrollment:
+                raise ValueError("Staff member already enrolled")
+            
+            # Check if staff is instructing this class
+            studio_class = self.get_class_by_id(instance.class_id)
+            if studio_class and studio_class.instructor_id == staff_id:
+                raise ValueError("Staff member cannot book a class they are instructing")
+            
+            # Add staff member to class (no payment required)
+            instance.add_student(staff_id, None)
+            return True
+        except Exception as e:
+            from models import db
+            db.session.rollback()
+            raise e
+    
     def cancel_enrollment(self, student_id: int, instance_id: str) -> bool:
         """Cancel a student's enrollment"""
         try:

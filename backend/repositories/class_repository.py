@@ -49,6 +49,13 @@ class ClassInstanceRepository(SQLAlchemyRepository[ClassInstance]):
     
     def find_available_instances(self) -> List[ClassInstance]:
         """Find instances that are not full"""
-        return self.query().filter(
-            ClassInstance.current_enrollment < ClassInstance.max_capacity
-        ).all() 
+        # This method needs to be implemented differently since enrolled_count is a property
+        # We'll get all instances and filter them in Python
+        all_instances = self.query().all()
+        available_instances = []
+        
+        for instance in all_instances:
+            if instance.enrolled_count < instance.max_capacity:
+                available_instances.append(instance)
+        
+        return available_instances 
