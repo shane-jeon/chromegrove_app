@@ -2,6 +2,12 @@ import { useEffect, useState } from "react";
 import AddClassDropdownForm, {
   type AddClassForm,
 } from "../../components/AddClassDropdownForm";
+import AddAnnouncementModal, {
+  type AddAnnouncementForm,
+} from "../../components/AddAnnouncementModal";
+import BulletinBoard, {
+  type AnnouncementItem,
+} from "../../components/BulletinBoard";
 import Schedule from "../../components/Schedule";
 
 interface StudioClass {
@@ -27,7 +33,9 @@ interface Instructor {
 
 export default function ManagementDashboard() {
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const [classes, setClasses] = useState<StudioClass[]>([]);
+  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [form, setForm] = useState<AddClassForm>({
     class_name: "",
     description: "",
@@ -40,6 +48,7 @@ export default function ManagementDashboard() {
     recurrence_pattern: "",
   });
   const [loading, setLoading] = useState(false);
+  const [announcementLoading, setAnnouncementLoading] = useState(false);
   const [staffList, setStaffList] = useState<Instructor[]>([]);
   const [showInstructors, setShowInstructors] = useState(false);
 
@@ -48,6 +57,13 @@ export default function ManagementDashboard() {
     fetch("http://localhost:5000/api/studio-classes/list")
       .then((res) => res.json())
       .then((data) => setClasses(data.classes || []));
+  }, []);
+
+  // Fetch announcements on mount
+  useEffect(() => {
+    fetch("http://localhost:5000/api/announcements?board_type=student")
+      .then((res) => res.json())
+      .then((data) => setAnnouncements(data.announcements || []));
   }, []);
 
   // Fetch all staff when dropdown opens
@@ -119,9 +135,42 @@ export default function ManagementDashboard() {
     }
   };
 
+  const handleAnnouncementSubmit = async (
+    announcementForm: AddAnnouncementForm,
+  ) => {
+    setAnnouncementLoading(true);
+    try {
+      const response = await fetch("http://localhost:5000/api/announcements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...announcementForm,
+          author_id: 1, // TODO: Get actual management user ID
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // Refresh announcements
+        const announcementsRes = await fetch(
+          "http://localhost:5000/api/announcements?board_type=student",
+        );
+        const announcementsData = await announcementsRes.json();
+        setAnnouncements(announcementsData.announcements || []);
+        setShowAnnouncementModal(false);
+      } else {
+        throw new Error(data.error || "Failed to create announcement");
+      }
+    } catch (error) {
+      throw error;
+    } finally {
+      setAnnouncementLoading(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen flex-col items-center bg-gray-50 px-4 py-10">
-      <div className="mx-auto w-full max-w-5xl">
+      <div className="mx-auto w-full max-w-6xl">
         <h1 className="mb-8 text-center text-3xl font-bold text-purple-700">
           Management Dashboard
         </h1>
@@ -132,9 +181,10 @@ export default function ManagementDashboard() {
           <div className="flex flex-1 flex-col items-center justify-center">
             <Schedule classes={classes} role="management" />
           </div>
-          {/* Right Column: Add Class, button and form centered horizontally, start at top */}
-          <div className="flex flex-1 flex-col items-center justify-start">
-            <div className="flex w-full flex-col items-center">
+          {/* Right Column: Management Controls + Bulletin Board */}
+          <div className="flex flex-1 flex-col items-center justify-start gap-6">
+            {/* Management Controls */}
+            <div className="flex w-full flex-col items-center gap-4">
               <button
                 className={`add-class-btn mb-2 flex items-center rounded-full px-8 py-3 text-lg font-semibold text-white shadow transition gap-2${
                   showDropdown ? " open" : ""
@@ -164,9 +214,29 @@ export default function ManagementDashboard() {
                 handleSelectChange={handleSelectChange}
                 handleChange={handleChange}
               />
+
+              {/* Add Announcement Button */}
+              <button
+                className="add-class-btn flex items-center gap-2 rounded-full px-8 py-3 text-lg font-semibold text-white shadow transition"
+                style={{
+                  background: "#805ad5",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#6b46c1";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#805ad5";
+                }}
+                onClick={() => setShowAnnouncementModal(true)}
+                type="button">
+                📢 Add Announcement
+              </button>
+
               {/* Instructors Button and Dropdown */}
               <button
-                className="add-class-btn mt-4 flex items-center gap-2 rounded-full px-8 py-3 text-lg font-semibold text-white shadow transition"
+                className="add-class-btn flex items-center gap-2 rounded-full px-8 py-3 text-lg font-semibold text-white shadow transition"
                 style={{
                   background: "#805ad5",
                   border: "none",
@@ -216,9 +286,25 @@ export default function ManagementDashboard() {
                 </div>
               )}
             </div>
+
+            {/* Bulletin Board */}
+            <div className="w-full">
+              <BulletinBoard
+                announcements={announcements}
+                title="Bulletin Board"
+              />
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Add Announcement Modal */}
+      <AddAnnouncementModal
+        show={showAnnouncementModal}
+        onClose={() => setShowAnnouncementModal(false)}
+        onSubmit={handleAnnouncementSubmit}
+        loading={announcementLoading}
+      />
     </div>
   );
 }

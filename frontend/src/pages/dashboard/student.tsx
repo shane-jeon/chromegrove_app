@@ -3,6 +3,9 @@ import styled from "styled-components";
 import { useUser } from "@clerk/nextjs";
 import ClassScheduleList from "../../components/ClassScheduleList";
 import MembershipBox from "../../components/MembershipBox";
+import BulletinBoard, {
+  type AnnouncementItem,
+} from "../../components/BulletinBoard";
 
 interface ClassItem {
   instance_id: string;
@@ -18,13 +21,6 @@ interface ClassItem {
   recommended_attire?: string;
   is_enrolled?: boolean;
   enrollment_id?: number;
-}
-
-interface AnnouncementItem {
-  id: number;
-  title: string;
-  body: string;
-  date_created: string;
 }
 
 interface SlidingScaleOption {
@@ -75,24 +71,14 @@ const ScheduleContainer = styled.div`
 `;
 
 // Right Side - Membership + Bulletin Board
-const BulletinContainer = styled.div`
+const RightSideContainer = styled.div`
+  display: flex;
+  flex-direction: column;
   flex: 0 0 320px;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 24px;
-  height: fit-content;
-  max-height: calc(100vh - 48px);
-  overflow-y: auto;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  position: sticky;
-  top: 24px;
+  min-width: 0; /* Allow flex item to shrink */
 
   @media (max-width: 768px) {
-    flex: none;
-    max-height: none;
-    position: static;
-    margin-top: 16px;
+    flex: 1;
   }
 `;
 
@@ -162,48 +148,6 @@ const EmptyState = styled.div`
     margin: 0;
     font-size: 14px;
   }
-`;
-
-// Bulletin Board Styles
-const BulletinTitle = styled.h2`
-  font-size: 20px;
-  font-weight: 700;
-  color: #2d3748;
-  margin: 0 0 20px 0;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #e2e8f0;
-`;
-
-const BulletinItem = styled.div`
-  background: #f8f9fa;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
-  border-left: 4px solid #805ad5;
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-`;
-
-const BulletinItemTitle = styled.h3`
-  font-size: 16px;
-  font-weight: 600;
-  color: #2d3748;
-  margin: 0 0 8px 0;
-`;
-
-const BulletinItemBody = styled.p`
-  font-size: 14px;
-  color: #4a5568;
-  line-height: 1.5;
-  margin: 0 0 8px 0;
-`;
-
-const BulletinItemDate = styled.div`
-  font-size: 12px;
-  color: #718096;
-  font-weight: 500;
 `;
 
 // Modal Styles
@@ -1360,38 +1304,10 @@ export default function StudentDashboard() {
         </ScheduleContainer>
 
         {/* Right Side - Membership + Bulletin Board */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            flex: "0 0 320px",
-            minWidth: 0,
-          }}>
+        <RightSideContainer>
           <MembershipBox />
-          <BulletinContainer>
-            <BulletinTitle>Bulletin Board</BulletinTitle>
-            {announcements.length === 0 ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  color: "#718096",
-                  padding: "20px",
-                }}>
-                <p>No announcements at this time.</p>
-              </div>
-            ) : (
-              announcements.map((announcement) => (
-                <BulletinItem key={announcement.id}>
-                  <BulletinItemTitle>{announcement.title}</BulletinItemTitle>
-                  <BulletinItemBody>{announcement.body}</BulletinItemBody>
-                  <BulletinItemDate>
-                    {new Date(announcement.date_created).toLocaleDateString()}
-                  </BulletinItemDate>
-                </BulletinItem>
-              ))
-            )}
-          </BulletinContainer>
-        </div>
+          <BulletinBoard announcements={announcements} />
+        </RightSideContainer>
       </DashboardContainer>
 
       {/* Payment Modal */}
