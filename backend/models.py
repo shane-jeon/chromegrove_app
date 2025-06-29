@@ -119,7 +119,6 @@ class User(db.Model):
 
     # Relationships - no backrefs to avoid conflicts
     payments = db.relationship('Payment', backref='user', lazy='dynamic')
-    class_enrollments = db.relationship('ClassEnrollment', backref='user', lazy='dynamic')
 
     def __repr__(self):
         return f"<User id={self.id} clerk_user_id={self.clerk_user_id} email={self.email} name={self.name} role={self.role}>"
@@ -399,12 +398,16 @@ class ClassEnrollment(db.Model):
     student_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     instance_id = db.Column(db.String(50), db.ForeignKey('class_instances.instance_id'), nullable=False)
     payment_id = db.Column(db.Integer, db.ForeignKey('payments.id'), nullable=True)
-    status = db.Column(db.String(32), nullable=False, default='enrolled')  # 'enrolled', 'cancelled', 'attended'
+    status = db.Column(db.String(32), nullable=False, default='enrolled')  # 'enrolled', 'cancelled', 'attended', 'missed'
     enrolled_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     cancelled_at = db.Column(db.DateTime, nullable=True)
+    attendance_marked_at = db.Column(db.DateTime, nullable=True)  # When attendance was marked
+    marked_by_staff_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # Which staff marked attendance
     
-    # Relationships - no backrefs to avoid conflicts
+    # Relationships - specify foreign_keys to avoid ambiguity
     payment = db.relationship('Payment', backref='enrollments')
+    student = db.relationship('User', foreign_keys=[student_id], backref='enrollments')
+    marked_by_staff = db.relationship('User', foreign_keys=[marked_by_staff_id])
 
     def __repr__(self):
         return f"<ClassEnrollment id={self.id} student_id={self.student_id} instance_id={self.instance_id} status={self.status}>"
@@ -413,3 +416,13 @@ class ClassEnrollment(db.Model):
     def is_active(self):
         """Check if this enrollment is active (enrolled and not cancelled)."""
         return self.status == 'enrolled'
+    
+    def mark_attendance(self, status: str, staff_id: int):
+        """Mark attendance for this enrollment"""
+        if status not in ['attended', 'missed']:
+            raise ValueError("Status must be 'attended' or 'missed'")
+        
+        self.status = status
+        self.attendance_marked_at = datetime.utcnow()
+        self.marked_by_staff_id = staff_id
+        db.session.commit()
