@@ -4,15 +4,15 @@ import "react-calendar/dist/Calendar.css";
 import ClassScheduleList from "./ClassScheduleList";
 
 interface ClassItem {
-  instance_id?: string;
+  instance_id: string;
   id?: number;
   class_name: string;
-  instructor_id: string | number;
+  instructor_id: string;
   instructor_name?: string;
   start_time: string;
   duration: number;
   max_capacity: number;
-  enrolled_count?: number;
+  enrolled_count: number;
   description?: string;
   requirements?: string;
   recommended_attire?: string;

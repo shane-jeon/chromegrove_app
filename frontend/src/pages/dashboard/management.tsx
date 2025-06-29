@@ -10,13 +10,13 @@ interface StudioClass {
   description: string;
   start_time: string;
   duration: number;
-  instructor_id: number;
+  instructor_id: string;
   max_capacity: number;
   requirements: string;
   recommended_attire: string;
   recurrence_pattern: string;
-  instance_id?: string;
-  enrolled_count?: number;
+  instance_id: string;
+  enrolled_count: number;
 }
 
 interface Instructor {

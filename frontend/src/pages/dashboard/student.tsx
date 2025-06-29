@@ -537,7 +537,11 @@ function formatClassTime(startTime: string, duration: number): string {
 
 type TabType = "studio" | "upcoming" | "past";
 
+console.log("🟢 student.tsx loaded");
+
 export default function StudentDashboard() {
+  console.log("🎬 StudentDashboard component rendering");
+
   const { user } = useUser();
   const [allClasses, setAllClasses] = useState<ClassItem[]>([]);
   const [enrolledClasses, setEnrolledClasses] = useState<ClassItem[]>([]);
@@ -556,6 +560,8 @@ export default function StudentDashboard() {
   const [selectedAmount, setSelectedAmount] = useState<number>(0);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState<string>("");
+  const [paymentModalTriggeredByBooking, setPaymentModalTriggeredByBooking] =
+    useState(false);
 
   // Success modal and loading states
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -570,88 +576,188 @@ export default function StudentDashboard() {
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>("studio");
 
+  console.log("🔍 Current state:", {
+    showPaymentModal,
+    paymentModalTriggeredByBooking,
+    showCancelModal,
+    showSuccessModal,
+    selectedClass: selectedClass?.class_name,
+    user: user?.id,
+  });
+
   useEffect(() => {
+    console.log("🏗️ Component mount effect running");
     setIsMounted(true);
   }, []);
 
-  // Check for payment success on component mount
+  // Reset payment modal state when user changes
   useEffect(() => {
+    console.log("👤 User change effect running, user:", user?.id);
+    if (user) {
+      console.log("👤 User changed, resetting payment modal state");
+      setShowPaymentModal(false);
+      setPaymentModalTriggeredByBooking(false);
+      setSelectedClass(null);
+      setSelectedOption(null);
+      setSelectedAmount(0);
+      setPaymentError("");
+    }
+  }, [user]);
+
+  // Reset payment modal if it's shown without being triggered by booking
+  useEffect(() => {
+    console.log("🔍 Payment modal validation effect running");
+    if (showPaymentModal && !paymentModalTriggeredByBooking) {
+      console.log("🚨 Payment modal shown without booking trigger - resetting");
+      setShowPaymentModal(false);
+      setSelectedClass(null);
+      setSelectedOption(null);
+      setSelectedAmount(0);
+      setPaymentError("");
+    }
+  }, [showPaymentModal, paymentModalTriggeredByBooking]);
+
+  // Periodic check to ensure payment modal state is correct
+  useEffect(() => {
+    console.log("⏰ Setting up periodic payment modal check");
+    const interval = setInterval(() => {
+      if (showPaymentModal && !paymentModalTriggeredByBooking) {
+        console.log(
+          "🚨 Periodic check: Payment modal in invalid state - resetting",
+        );
+        setShowPaymentModal(false);
+        setPaymentModalTriggeredByBooking(false);
+        setSelectedClass(null);
+        setSelectedOption(null);
+        setSelectedAmount(0);
+        setPaymentError("");
+      }
+    }, 1000); // Check every second
+
+    return () => {
+      console.log("⏰ Clearing periodic payment modal check");
+      clearInterval(interval);
+    };
+  }, [showPaymentModal, paymentModalTriggeredByBooking]);
+
+  // Debug payment modal state changes
+  useEffect(() => {
+    console.log("🔍 Payment modal state changed:", showPaymentModal);
+    if (showPaymentModal) {
+      console.log(
+        "💰 Payment modal opened - selected class:",
+        selectedClass?.class_name,
+      );
+      console.log(
+        "💰 Payment modal triggered by booking:",
+        paymentModalTriggeredByBooking,
+      );
+      console.log("💰 Current URL:", window.location.href);
+      console.log(
+        "💰 URL params:",
+        new URLSearchParams(window.location.search).toString(),
+      );
+      console.log("💰 Cancel modal state:", showCancelModal);
+      console.log("💰 Success modal state:", showSuccessModal);
+      console.log("💰 Stack trace:", new Error().stack);
+    }
+  }, [
+    showPaymentModal,
+    selectedClass,
+    paymentModalTriggeredByBooking,
+    showCancelModal,
+    showSuccessModal,
+  ]);
+
+  // Handle URL parameters for payment success
+  useEffect(() => {
+    console.log("🔗 URL parameter check effect running");
     const urlParams = new URLSearchParams(window.location.search);
     const paymentStatus = urlParams.get("payment");
     const sessionId = urlParams.get("session_id");
+    const membershipStatus = urlParams.get("membership");
 
-    // Only show modal if this session_id hasn't been processed in this session
-    if (
-      paymentStatus === "success" &&
-      sessionId &&
-      !sessionStorage.getItem(`payment_processed_${sessionId}`)
-    ) {
-      setSuccessLoading(true);
+    console.log("🔍 URL params check:", {
+      paymentStatus,
+      sessionId,
+      membershipStatus,
+    });
+
+    if (paymentStatus === "success" && sessionId) {
+      console.log("🚨 URL parameters detected during cancellation flow!");
+      console.log("🚨 This suggests a redirect from a payment flow");
+      console.log("🚨 Current URL:", window.location.href);
+      console.log("URL parameters stack trace");
+      console.trace();
+
+      // Check if we're in a cancellation flow
+      if (showCancelModal) {
+        console.log("❌ Not showing payment success modal during cancellation");
+        console.log("❌ Not showing payment success modal:", {
+          paymentStatus,
+          sessionId,
+          alreadyProcessed: "true",
+          showCancelModal,
+        });
+        // Clear URL parameters to prevent them from persisting
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, "", newUrl);
+        console.log("🧹 Cleared URL parameters to prevent persistence");
+        return;
+      }
+
+      // Check if we've already processed this session
+      const processedSessions = JSON.parse(
+        localStorage.getItem("processedPaymentSessions") || "[]",
+      );
+      if (processedSessions.includes(sessionId)) {
+        console.log("❌ Payment session already processed, not showing modal");
+        // Clear URL parameters
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, "", newUrl);
+        return;
+      }
+
+      console.log("✅ Showing payment success modal");
       setShowSuccessModal(true);
 
-      // Mark as processed
-      sessionStorage.setItem(`payment_processed_${sessionId}`, "true");
-
-      // Verify payment and refresh data
-      verifyPaymentAndRefreshData(sessionId);
-
-      // Clean up URL parameters
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
-    }
-  }, []);
-
-  const verifyPaymentAndRefreshData = async (sessionId: string) => {
-    try {
-      console.log("🔄 Verifying payment for session:", sessionId);
-
-      // Verify payment with backend
-      const response = await fetch(
-        `http://localhost:5000/verify-payment?session_id=${sessionId}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
+      // Mark session as processed
+      processedSessions.push(sessionId);
+      localStorage.setItem(
+        "processedPaymentSessions",
+        JSON.stringify(processedSessions),
       );
 
-      const data = await response.json();
-      console.log("📊 Payment verification response:", data);
+      // Clear URL parameters after processing
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, "", newUrl);
+      console.log("🧹 Cleared URL parameters after processing");
+    } else if (membershipStatus === "success" && sessionId) {
+      console.log("✅ Showing membership success modal");
+      setShowSuccessModal(true);
 
-      if (data.success) {
-        console.log(
-          "✅ Payment verified successfully, waiting for backend processing...",
-        );
+      // Mark session as processed
+      const processedSessions = JSON.parse(
+        localStorage.getItem("processedPaymentSessions") || "[]",
+      );
+      processedSessions.push(sessionId);
+      localStorage.setItem(
+        "processedPaymentSessions",
+        JSON.stringify(processedSessions),
+      );
 
-        // Wait a bit for backend to process the enrollment
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        console.log("🔄 Refreshing enrolled classes...");
-        // Refresh enrolled classes data
-        await refreshEnrolledClasses();
-
-        // Wait a bit more and refresh again to ensure we have the latest data
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        await refreshEnrolledClasses();
-
-        // Auto-hide success modal after 4 seconds
-        setTimeout(() => {
-          setShowSuccessModal(false);
-          setSuccessLoading(false);
-        }, 4000);
-      } else {
-        console.error("❌ Payment verification failed:", data.error);
-        setSuccessLoading(false);
-      }
-    } catch (error) {
-      console.error("❌ Error verifying payment:", error);
-      setSuccessLoading(false);
+      // Clear URL parameters after processing
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, "", newUrl);
     }
-  };
+  }, [showCancelModal]); // Add showCancelModal as dependency
 
   const refreshEnrolledClasses = async () => {
-    if (!user) return;
+    console.log("🔄 refreshEnrolledClasses called, user:", user?.id);
+    if (!user) {
+      console.log("❌ No user, skipping refresh");
+      return;
+    }
 
     setRefreshingData(true);
     try {
@@ -671,7 +777,7 @@ export default function StudentDashboard() {
         console.error("❌ Failed to refresh enrolled classes:", data.error);
       }
     } catch (error) {
-      console.error("Error refreshing enrolled classes:", error);
+      console.error("❌ Error refreshing enrolled classes:", error);
     } finally {
       setRefreshingData(false);
     }
@@ -679,6 +785,7 @@ export default function StudentDashboard() {
 
   // Manual refresh function
   const handleManualRefresh = async () => {
+    console.log("🔄 handleManualRefresh called");
     setRefreshingData(true);
     try {
       // Refresh all classes
@@ -909,6 +1016,7 @@ export default function StudentDashboard() {
   };
 
   const handleBookClassClick = async (c: ClassItem) => {
+    console.log("handleBookClassClick called", c);
     if (!currentUser) {
       alert("Please sign in to book a class.");
       return;
@@ -990,15 +1098,18 @@ export default function StudentDashboard() {
         setSelectedAmount(0);
         setPaymentError("");
         setShowPaymentModal(true);
+        setPaymentModalTriggeredByBooking(true);
         return;
       }
     } catch (error) {
       console.error("Error checking booking eligibility:", error);
       alert("Failed to check booking eligibility. Please try again.");
     }
+    console.log("handleBookClassClick end");
   };
 
   const handlePaymentContinue = async () => {
+    console.log("handlePaymentContinue called");
     if (!currentUser || !selectedClass) {
       return;
     }
@@ -1051,6 +1162,7 @@ export default function StudentDashboard() {
     } finally {
       setPaymentLoading(false);
     }
+    console.log("handlePaymentContinue end");
   };
 
   const handleTierSelect = (option: SlidingScaleOption) => {
@@ -1071,22 +1183,38 @@ export default function StudentDashboard() {
   };
 
   const handleCancelClass = async (c: ClassItem) => {
+    console.log("handleCancelClass called", c);
     if (!user) {
       alert("Please log in to cancel classes.");
       return;
     }
 
+    console.log("🚫 Cancelling class:", c.class_name, c.instance_id);
+
+    // Ensure payment modal is closed when cancelling
+    setShowPaymentModal(false);
+    setPaymentModalTriggeredByBooking(false);
+    setSelectedClass(null);
+    setSelectedOption(null);
+    setSelectedAmount(0);
+    setPaymentError("");
+
     // Show cancel confirmation modal
     setClassToCancel(c);
     setShowCancelModal(true);
+    console.log("handleCancelClass end");
   };
 
   const handleConfirmCancel = async () => {
+    console.log("handleConfirmCancel called");
     if (!classToCancel || !user) {
       setShowCancelModal(false);
       setClassToCancel(null);
       return;
     }
+
+    console.log("✅ Confirming cancellation for:", classToCancel.class_name);
+    console.log("🔍 Current URL before cancellation:", window.location.href);
 
     try {
       const response = await fetch(
@@ -1104,12 +1232,27 @@ export default function StudentDashboard() {
       );
 
       const data = await response.json();
+      console.log("📊 Cancellation response:", data);
 
       if (data.success) {
+        console.log("✅ Cancellation successful");
+        console.log(
+          "🔍 URL after cancellation response:",
+          window.location.href,
+        );
+
         // Show success message briefly
         setSuccessLoading(true);
         setShowCancelModal(false);
         setClassToCancel(null);
+
+        // Ensure payment modal is still closed
+        setShowPaymentModal(false);
+        setPaymentModalTriggeredByBooking(false);
+        setSelectedClass(null);
+        setSelectedOption(null);
+        setSelectedAmount(0);
+        setPaymentError("");
 
         // Refresh all class data to update capacity
         await handleManualRefresh();
@@ -1121,15 +1264,42 @@ export default function StudentDashboard() {
           setSuccessLoading(false);
         }, 2000);
       } else {
+        console.error("❌ Cancellation failed:", data.error);
         alert(`Error cancelling class: ${data.error}`);
         setShowCancelModal(false);
         setClassToCancel(null);
       }
     } catch (error) {
-      console.error("Error cancelling class:", error);
+      console.error("❌ Error cancelling class:", error);
       alert("Failed to cancel class. Please try again.");
       setShowCancelModal(false);
       setClassToCancel(null);
+    }
+    console.log("handleConfirmCancel end");
+  };
+
+  // Cleanup effect to reset payment modal state
+  useEffect(() => {
+    return () => {
+      // Cleanup when component unmounts
+      console.log("🧹 Component unmounting - resetting payment modal state");
+      setShowPaymentModal(false);
+      setPaymentModalTriggeredByBooking(false);
+      setSelectedClass(null);
+      setSelectedOption(null);
+      setSelectedAmount(0);
+      setPaymentError("");
+    };
+  }, []);
+
+  // Add setShowPaymentModalDebugStack
+  const setShowPaymentModalDebugStack = (val: boolean) => {
+    setShowPaymentModal(val);
+    if (val) {
+      console.log("setShowPaymentModal(true) called");
+      console.trace("setShowPaymentModal(true) stack trace");
+    } else {
+      console.log("setShowPaymentModal(false) called");
     }
   };
 
@@ -1225,125 +1395,145 @@ export default function StudentDashboard() {
       </DashboardContainer>
 
       {/* Payment Modal */}
-      {showPaymentModal && (
-        <ModalOverlay onClick={() => setShowPaymentModal(false)}>
-          <ModalContent onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <CloseButton onClick={() => setShowPaymentModal(false)}>
-                &times;
-              </CloseButton>
-              <ModalTitle>Select Your Payment Tier</ModalTitle>
-              <ModalSubtitle>
-                Choose the payment tier that works best for your financial
-                situation
-              </ModalSubtitle>
-            </ModalHeader>
-
-            <div style={{ flex: 1, overflowY: "auto", marginBottom: "32px" }}>
-              {loadingSlidingScale ? (
-                <div
-                  style={{
-                    textAlign: "center",
-                    padding: "40px",
-                    color: "#718096",
+      {showPaymentModal &&
+        paymentModalTriggeredByBooking &&
+        !showCancelModal &&
+        ((() => {
+          console.trace("Rendering Payment Modal");
+          console.log(document.querySelectorAll(".modal-overlay"));
+        })(),
+        (
+          <ModalOverlay
+            className="modal-overlay"
+            onClick={() => {
+              setShowPaymentModalDebugStack(false);
+              setPaymentModalTriggeredByBooking(false);
+            }}>
+            <ModalContent onClick={(e) => e.stopPropagation()}>
+              <ModalHeader>
+                <CloseButton
+                  onClick={() => {
+                    setShowPaymentModalDebugStack(false);
+                    setPaymentModalTriggeredByBooking(false);
                   }}>
-                  <p>Loading payment options...</p>
-                </div>
-              ) : slidingScaleOptions.length === 0 ? (
-                <div
-                  style={{
-                    textAlign: "center",
-                    padding: "40px",
-                    color: "#718096",
-                  }}>
-                  <p>No payment options available. Please try again later.</p>
-                </div>
-              ) : (
-                slidingScaleOptions.map((option) => (
-                  <TierCard
-                    key={option.id}
-                    selected={selectedOption?.id === option.id}
-                    onClick={() => handleTierSelect(option)}>
-                    <TierHeader>
-                      <TierName>{option.tier_name}</TierName>
-                      <TierPriceRange>
-                        ${option.price_min} - ${option.price_max}
-                      </TierPriceRange>
-                    </TierHeader>
-                    <TierDescription>{option.description}</TierDescription>
-                    <SliderContainer>
-                      <SliderLabel>
-                        <SliderValue>
-                          $
-                          {selectedOption?.id === option.id
-                            ? selectedAmount
-                            : Math.round(
-                                (option.price_min + option.price_max) / 2,
-                              )}
-                        </SliderValue>
-                        <SliderRange>
-                          ${option.price_min} - ${option.price_max}
-                        </SliderRange>
-                      </SliderLabel>
-                      <Slider
-                        type="range"
-                        min={option.price_min}
-                        max={option.price_max}
-                        step={1}
-                        value={
-                          selectedOption?.id === option.id
-                            ? selectedAmount
-                            : Math.round(
-                                (option.price_min + option.price_max) / 2,
-                              )
-                        }
-                        onChange={(e) => {
-                          const newAmount = parseInt(e.target.value);
-                          if (selectedOption?.id === option.id) {
-                            handleAmountChange(newAmount);
-                          } else {
-                            // If this tier is not selected, select it and set the amount
-                            setSelectedOption(option);
-                            setSelectedAmount(newAmount);
-                          }
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (selectedOption?.id !== option.id) {
-                            handleTierSelect(option);
-                          }
-                        }}
-                      />
-                    </SliderContainer>
-                  </TierCard>
-                ))
-              )}
+                  &times;
+                </CloseButton>
+                <ModalTitle>Select Your Payment Tier</ModalTitle>
+                <ModalSubtitle>
+                  Choose the payment tier that works best for your financial
+                  situation
+                </ModalSubtitle>
+              </ModalHeader>
 
-              {paymentError && <ErrorMessage>{paymentError}</ErrorMessage>}
-            </div>
-
-            <ModalActions>
-              <ModalButton onClick={() => setShowPaymentModal(false)}>
-                Cancel
-              </ModalButton>
-              <ModalButton
-                primary
-                disabled={!isPaymentValid()}
-                loading={paymentLoading}
-                onClick={handlePaymentContinue}>
-                {paymentLoading ? (
-                  <>
-                    <LoadingSpinner />
-                    Processing...
-                  </>
+              <div style={{ flex: 1, overflowY: "auto", marginBottom: "32px" }}>
+                {loadingSlidingScale ? (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "40px",
+                      color: "#718096",
+                    }}>
+                    <p>Loading payment options...</p>
+                  </div>
+                ) : slidingScaleOptions.length === 0 ? (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "40px",
+                      color: "#718096",
+                    }}>
+                    <p>No payment options available. Please try again later.</p>
+                  </div>
                 ) : (
-                  "Continue to Payment"
+                  slidingScaleOptions.map((option) => (
+                    <TierCard
+                      key={option.id}
+                      selected={selectedOption?.id === option.id}
+                      onClick={() => handleTierSelect(option)}>
+                      <TierHeader>
+                        <TierName>{option.tier_name}</TierName>
+                        <TierPriceRange>
+                          ${option.price_min} - ${option.price_max}
+                        </TierPriceRange>
+                      </TierHeader>
+                      <TierDescription>{option.description}</TierDescription>
+                      <SliderContainer>
+                        <SliderLabel>
+                          <SliderValue>
+                            $
+                            {selectedOption?.id === option.id
+                              ? selectedAmount
+                              : Math.round(
+                                  (option.price_min + option.price_max) / 2,
+                                )}
+                          </SliderValue>
+                          <SliderRange>
+                            ${option.price_min} - ${option.price_max}
+                          </SliderRange>
+                        </SliderLabel>
+                        <Slider
+                          type="range"
+                          min={option.price_min}
+                          max={option.price_max}
+                          step={1}
+                          value={
+                            selectedOption?.id === option.id
+                              ? selectedAmount
+                              : Math.round(
+                                  (option.price_min + option.price_max) / 2,
+                                )
+                          }
+                          onChange={(e) => {
+                            const newAmount = parseInt(e.target.value);
+                            if (selectedOption?.id === option.id) {
+                              handleAmountChange(newAmount);
+                            } else {
+                              // If this tier is not selected, select it and set the amount
+                              setSelectedOption(option);
+                              setSelectedAmount(newAmount);
+                            }
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (selectedOption?.id !== option.id) {
+                              handleTierSelect(option);
+                            }
+                          }}
+                        />
+                      </SliderContainer>
+                    </TierCard>
+                  ))
                 )}
-              </ModalButton>
-            </ModalActions>
-          </ModalContent>
-        </ModalOverlay>
-      )}
+
+                {paymentError && <ErrorMessage>{paymentError}</ErrorMessage>}
+              </div>
+
+              <ModalActions>
+                <ModalButton
+                  onClick={() => {
+                    setShowPaymentModalDebugStack(false);
+                    setPaymentModalTriggeredByBooking(false);
+                  }}>
+                  Cancel
+                </ModalButton>
+                <ModalButton
+                  primary={true}
+                  disabled={!isPaymentValid()}
+                  loading={paymentLoading}
+                  onClick={handlePaymentContinue}>
+                  {paymentLoading ? (
+                    <>
+                      <LoadingSpinner />
+                      Processing...
+                    </>
+                  ) : (
+                    "Continue to Payment"
+                  )}
+                </ModalButton>
+              </ModalActions>
+            </ModalContent>
+          </ModalOverlay>
+        ))}
 
       {/* Success Modal */}
       {showSuccessModal && (
@@ -1434,7 +1624,7 @@ export default function StudentDashboard() {
                 Keep Enrollment
               </ModalButton>
               <ModalButton
-                primary
+                primary={true}
                 onClick={handleConfirmCancel}
                 style={{ background: "#e53e3e" }}>
                 Cancel Enrollment
