@@ -44,6 +44,7 @@ interface ClassItem {
   recommended_attire?: string;
   is_enrolled?: boolean;
   enrollment_id?: number;
+  payment_type?: string;
   is_instructing?: boolean;
 }
 
@@ -399,6 +400,12 @@ export default function StaffDashboard() {
   const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [isCancellation, setIsCancellation] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successModalContent, setSuccessModalContent] = useState<{
+    title: string;
+    message: string;
+    subMessage?: string;
+  } | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -698,6 +705,21 @@ export default function StaffDashboard() {
         await fetchScheduleData();
         setShowBookingModal(false);
         setSelectedClass(null);
+
+        // Show staff success modal
+        setShowSuccessModal(true);
+        setSuccessModalContent({
+          title: "Booking confirmed",
+          message: "This class has been booked using your staff membership.",
+          subMessage:
+            "Attendance will be logged differently for staff bookings.",
+        });
+
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+          setShowSuccessModal(false);
+          setSuccessModalContent(null);
+        }, 3000);
       } else {
         alert(`Failed to book class: ${data.error}`);
       }
@@ -749,6 +771,12 @@ export default function StaffDashboard() {
         await fetchScheduleData();
         setShowBookingModal(false);
         setSelectedClass(null);
+        setShowSuccessModal(true);
+        setSuccessModalContent({
+          title: "Class Canceled",
+          message: "This booking has been removed from your schedule.",
+          subMessage: "Staff bookings are free and can be cancelled anytime.",
+        });
       } else {
         alert(`Failed to cancel class: ${data.error}`);
       }
@@ -973,6 +1001,54 @@ export default function StaffDashboard() {
         loading={bookingLoading}
         isCancellation={isCancellation}
       />
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}>
+          <div
+            style={{
+              backgroundColor: "white",
+              padding: "24px",
+              borderRadius: "8px",
+              maxWidth: "400px",
+              textAlign: "center",
+            }}>
+            <h2>{successModalContent?.title}</h2>
+            <p>{successModalContent?.message}</p>
+            {successModalContent?.subMessage && (
+              <p>{successModalContent.subMessage}</p>
+            )}
+            <button
+              onClick={() => {
+                setShowSuccessModal(false);
+                setSuccessModalContent(null);
+              }}
+              style={{
+                padding: "8px 16px",
+                backgroundColor: "#805ad5",
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                fontSize: "14px",
+                cursor: "pointer",
+                fontWeight: "500",
+              }}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </DashboardContainer>
   );
 }
