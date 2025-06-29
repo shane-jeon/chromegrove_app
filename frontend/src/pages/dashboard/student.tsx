@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useUser } from "@clerk/nextjs";
 import ClassScheduleList from "../../components/ClassScheduleList";
+import MembershipBox from "../../components/MembershipBox";
 
 interface ClassItem {
   instance_id: string;
@@ -45,6 +46,15 @@ interface User {
   name: string;
 }
 
+interface MembershipStatus {
+  has_membership: boolean;
+  membership_type?: string;
+  start_date?: string;
+  end_date?: string;
+  is_active?: boolean;
+  message?: string;
+}
+
 // Main Layout
 const DashboardContainer = styled.div`
   display: flex;
@@ -73,7 +83,7 @@ const ScheduleContainer = styled.div`
   }
 `;
 
-// Right Side - Bulletin Board (Sidebar)
+// Right Side - Membership + Bulletin Board
 const BulletinContainer = styled.div`
   flex: 0 0 320px;
   background: white;
@@ -569,6 +579,10 @@ export default function StudentDashboard() {
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>("studio");
 
+  // Membership status state
+  const [membershipStatus, setMembershipStatus] =
+    useState<MembershipStatus | null>(null);
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -765,6 +779,26 @@ export default function StudentDashboard() {
     }
   }, [user]);
 
+  // Fetch membership status on mount or when user changes
+  useEffect(() => {
+    async function fetchMembershipStatus() {
+      if (!user?.id) return;
+      try {
+        const res = await fetch("http://localhost:5000/api/membership/status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clerk_user_id: user.id }),
+        });
+        const data = await res.json();
+        setMembershipStatus(data.membership);
+      } catch (error) {
+        console.error("Error fetching membership status:", error);
+        setMembershipStatus(null);
+      }
+    }
+    fetchMembershipStatus();
+  }, [user]);
+
   // Filter and sort classes based on active tab
   const now = new Date();
 
@@ -890,12 +924,45 @@ export default function StudentDashboard() {
     }
   };
 
-  const handleBookClassClick = (c: ClassItem) => {
+  const handleBookClassClick = async (c: ClassItem) => {
     if (!currentUser) {
       alert("Please sign in to book a class.");
       return;
     }
 
+    // Check membership before showing payment modal
+    if (membershipStatus?.has_membership) {
+      // Book the class directly (call backend API)
+      try {
+        const response = await fetch(
+          "http://localhost:5000/api/studio-classes/book",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              clerk_user_id: currentUser.clerk_user_id,
+              instance_id: c.instance_id,
+            }),
+          },
+        );
+        const data = await response.json();
+        if (data.success) {
+          // Show confirmation modal
+          setShowSuccessModal(true);
+          setTimeout(() => setShowSuccessModal(false), 2000);
+          // Optionally refresh enrolled classes
+          await refreshEnrolledClasses();
+        } else {
+          alert("Failed to book class: " + (data.error || "Unknown error"));
+        }
+      } catch (error) {
+        console.error("Error booking class:", error);
+        alert("Failed to book class. Please try again.");
+      }
+      return;
+    }
+
+    // If no membership, show payment modal as before
     if (loadingSlidingScale) {
       alert(
         "Payment options are still loading. Please wait a moment and try again.",
@@ -1106,30 +1173,39 @@ export default function StudentDashboard() {
           )}
         </ScheduleContainer>
 
-        {/* Right Side - Bulletin Board */}
-        <BulletinContainer>
-          <BulletinTitle>Bulletin Board</BulletinTitle>
-          {announcements.length === 0 ? (
-            <div
-              style={{
-                textAlign: "center",
-                color: "#718096",
-                padding: "20px",
-              }}>
-              <p>No announcements at this time.</p>
-            </div>
-          ) : (
-            announcements.map((announcement) => (
-              <BulletinItem key={announcement.id}>
-                <BulletinItemTitle>{announcement.title}</BulletinItemTitle>
-                <BulletinItemBody>{announcement.body}</BulletinItemBody>
-                <BulletinItemDate>
-                  {new Date(announcement.date_created).toLocaleDateString()}
-                </BulletinItemDate>
-              </BulletinItem>
-            ))
-          )}
-        </BulletinContainer>
+        {/* Right Side - Membership + Bulletin Board */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            flex: "0 0 320px",
+            minWidth: 0,
+          }}>
+          <MembershipBox />
+          <BulletinContainer>
+            <BulletinTitle>Bulletin Board</BulletinTitle>
+            {announcements.length === 0 ? (
+              <div
+                style={{
+                  textAlign: "center",
+                  color: "#718096",
+                  padding: "20px",
+                }}>
+                <p>No announcements at this time.</p>
+              </div>
+            ) : (
+              announcements.map((announcement) => (
+                <BulletinItem key={announcement.id}>
+                  <BulletinItemTitle>{announcement.title}</BulletinItemTitle>
+                  <BulletinItemBody>{announcement.body}</BulletinItemBody>
+                  <BulletinItemDate>
+                    {new Date(announcement.date_created).toLocaleDateString()}
+                  </BulletinItemDate>
+                </BulletinItem>
+              ))
+            )}
+          </BulletinContainer>
+        </div>
       </DashboardContainer>
 
       {/* Payment Modal */}
@@ -1269,7 +1345,7 @@ export default function StudentDashboard() {
             ) : (
               <>
                 <SuccessIcon>✅</SuccessIcon>
-                <SuccessTitle>Payment Successful!</SuccessTitle>
+                <SuccessTitle>Class Booked!</SuccessTitle>
                 <SuccessMessage>
                   Your class has been booked successfully! You can view it in
                   your upcoming classes.
