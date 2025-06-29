@@ -8,12 +8,14 @@ interface AnnouncementItem {
   date_created: string;
   author_name: string;
   author_role: string;
+  board_type?: string;
 }
 
 interface BulletinBoardProps {
   announcements: AnnouncementItem[];
   title?: string;
   className?: string;
+  showStaffIndicators?: boolean;
 }
 
 // Bulletin Board Styles
@@ -83,6 +85,30 @@ const BulletinItemAuthor = styled.div`
   margin-top: 4px;
 `;
 
+const StaffBadge = styled.span`
+  background: #e53e3e;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  display: inline-block;
+`;
+
+const BulletinItemHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+`;
+
+const BulletinItemTitleContainer = styled.div`
+  display: flex;
+  align-items: center;
+  flex: 1;
+`;
+
 const EmptyState = styled.div`
   text-align: center;
   color: #718096;
@@ -93,6 +119,7 @@ const BulletinBoard: React.FC<BulletinBoardProps> = ({
   announcements,
   title = "Bulletin Board",
   className,
+  showStaffIndicators = false,
 }) => {
   return (
     <BulletinContainer className={className}>
@@ -104,7 +131,14 @@ const BulletinBoard: React.FC<BulletinBoardProps> = ({
       ) : (
         announcements.map((announcement) => (
           <BulletinItem key={announcement.id}>
-            <BulletinItemTitle>{announcement.title}</BulletinItemTitle>
+            <BulletinItemHeader>
+              <BulletinItemTitleContainer>
+                <BulletinItemTitle>{announcement.title}</BulletinItemTitle>
+                {showStaffIndicators && announcement.board_type === "staff" && (
+                  <StaffBadge>🔒 STAFF ONLY</StaffBadge>
+                )}
+              </BulletinItemTitleContainer>
+            </BulletinItemHeader>
             <BulletinItemBody>{announcement.body}</BulletinItemBody>
             <BulletinItemDate>
               {new Date(announcement.date_created).toLocaleDateString()}

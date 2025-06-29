@@ -70,7 +70,9 @@ export default function ManagementDashboard() {
 
   // Fetch announcements on mount
   useEffect(() => {
-    fetch("http://localhost:5000/api/announcements?board_type=student")
+    fetch(
+      "http://localhost:5000/api/announcements?board_types=student,staff,all",
+    )
       .then((res) => res.json())
       .then((data) => setAnnouncements(data.announcements || []));
   }, []);
@@ -162,7 +164,7 @@ export default function ManagementDashboard() {
       if (data.success) {
         // Refresh announcements
         const announcementsRes = await fetch(
-          "http://localhost:5000/api/announcements?board_type=student",
+          "http://localhost:5000/api/announcements?board_types=student,staff,all",
         );
         const announcementsData = await announcementsRes.json();
         setAnnouncements(announcementsData.announcements || []);
@@ -353,6 +355,7 @@ export default function ManagementDashboard() {
               <BulletinBoard
                 announcements={announcements}
                 title="Bulletin Board"
+                showStaffIndicators={true}
               />
             </div>
           </div>

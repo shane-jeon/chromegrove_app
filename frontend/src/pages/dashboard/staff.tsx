@@ -435,7 +435,7 @@ export default function StaffDashboard() {
   const fetchAnnouncements = async () => {
     try {
       const response = await fetch(
-        "http://localhost:5000/api/announcements?board_types=student,staff",
+        "http://localhost:5000/api/announcements?board_types=student,staff,all",
       );
       const data = await response.json();
 
@@ -955,6 +955,7 @@ export default function StaffDashboard() {
         <BulletinBoard
           announcements={announcements}
           title="Studio Announcements"
+          showStaffIndicators={true}
         />
       </RightSideContainer>
 
