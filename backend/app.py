@@ -16,6 +16,7 @@ from controllers.user_controller import UserController
 from controllers.class_controller import ClassController
 from controllers.payment_controller import PaymentController
 from controllers.membership_controller import MembershipController
+from controllers.attendance_controller import AttendanceController
 
 # Import DTOs
 from dtos.user_dto import UserDTO
@@ -42,6 +43,7 @@ user_controller = UserController()
 class_controller = ClassController()
 payment_controller = PaymentController()
 membership_controller = MembershipController()
+attendance_controller = AttendanceController()
 
 @app.route('/api/ping')
 def ping():
@@ -81,6 +83,10 @@ def get_studio_class_templates():
 def book_studio_class():
     return class_controller.book_class()
 
+@app.route('/api/studio-classes/book-staff', methods=['POST'])
+def book_studio_class_for_staff():
+    return class_controller.book_class_for_staff()
+
 @app.route('/api/studio-classes/check-eligibility', methods=['POST'])
 def check_booking_eligibility():
     return class_controller.check_booking_eligibility()
@@ -92,6 +98,10 @@ def get_student_enrolled_classes():
 @app.route('/api/students/cancel-enrollment', methods=['POST'])
 def cancel_enrollment():
     return class_controller.cancel_enrollment()
+
+@app.route('/api/staff/cancel-booking', methods=['POST'])
+def cancel_staff_booking():
+    return class_controller.cancel_staff_booking()
 
 @app.route('/api/studio-classes/<int:class_id>/staff', methods=['GET'])
 def get_class_staff(class_id):
@@ -108,6 +118,50 @@ def remove_class_staff(class_id, staff_id):
 @app.route('/api/studio-classes/<int:class_id>/instructor', methods=['PUT'])
 def change_class_instructor(class_id):
     return class_controller.change_class_instructor(class_id)
+
+# Attendance routes using AttendanceController
+@app.route('/api/staff/assigned-classes', methods=['GET'])
+def get_staff_assigned_classes():
+    return attendance_controller.get_staff_assigned_classes()
+
+@app.route('/api/staff/booked-classes', methods=['GET'])
+def get_staff_booked_classes():
+    return attendance_controller.get_staff_booked_classes()
+
+@app.route('/api/debug/assigned-classes', methods=['GET'])
+def debug_assigned_classes():
+    """Debug endpoint to check assigned classes"""
+    try:
+        clerk_user_id = request.args.get('clerk_user_id')
+        if not clerk_user_id:
+            return jsonify({"success": False, "error": "clerk_user_id is required"}), 400
+        
+        # Get user
+        user = user_controller.user_service.get_user_by_clerk_id(clerk_user_id)
+        if not user:
+            return jsonify({"success": False, "error": "User not found"}), 404
+        
+        # Get assigned classes
+        classes = attendance_controller.attendance_service.get_staff_assigned_classes(user.id)
+        
+        return jsonify({
+            "success": True,
+            "user_id": user.id,
+            "user_role": user.role,
+            "total_classes": len(classes),
+            "classes": classes
+        })
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/attendance/mark', methods=['POST'])
+def mark_attendance():
+    return attendance_controller.mark_attendance()
+
+@app.route('/api/attendance/roster/<instance_id>', methods=['GET'])
+def get_class_roster(instance_id):
+    return attendance_controller.get_class_roster(instance_id)
 
 # Payment routes using PaymentController
 @app.route('/api/sliding-scale-options', methods=['GET'])
@@ -259,26 +313,31 @@ def stripe_webhook():
 @app.route('/api/announcements')
 def get_announcements():
     try:
-        board_type = request.args.get('board_type', 'student')
-        bulletin_board = BulletinBoard.query.filter_by(board_type=board_type).first()
+        board_types = request.args.get('board_types', 'student').split(',')
+        all_announcements = []
         
-        if not bulletin_board:
-            return jsonify({"success": False, "error": "Bulletin board not found"}), 404
+        for board_type in board_types:
+            bulletin_board = BulletinBoard.query.filter_by(board_type=board_type.strip()).first()
+            
+            if bulletin_board:
+                announcements = bulletin_board.get_announcements()
+                for announcement in announcements:
+                    all_announcements.append({
+                        "id": announcement.id,
+                        "title": announcement.title,
+                        "body": announcement.body,
+                        "date_created": announcement.date_created.isoformat(),
+                        "author_name": announcement.author.name if announcement.author else 'Unknown',
+                        "author_role": announcement.author.role if announcement.author else 'Unknown',
+                        "board_type": board_type.strip()
+                    })
         
-        announcements = bulletin_board.get_announcements()
+        # Sort by date created (newest first)
+        all_announcements.sort(key=lambda x: x['date_created'], reverse=True)
+        
         return jsonify({
             "success": True,
-            "announcements": [
-                {
-                    "id": announcement.id,
-                    "title": announcement.title,
-                    "body": announcement.body,
-                    "date_created": announcement.date_created.isoformat(),
-                    "author_name": announcement.author.name if announcement.author else 'Unknown',
-                    "author_role": announcement.author.role if announcement.author else 'Unknown'
-                }
-                for announcement in announcements
-            ]
+            "announcements": all_announcements
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
