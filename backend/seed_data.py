@@ -1,7 +1,19 @@
-from models import db, SlidingScaleOption
+from models import db, SlidingScaleOption, BulletinBoard
 from app import app
 
 print("Seeding script started")
+
+def seed_bulletin_boards():
+    print("Preparing bulletin boards...")
+    boards = [
+        BulletinBoard(board_type="student"),
+        BulletinBoard(board_type="staff"),
+    ]
+    print(f"Prepared {len(boards)} bulletin boards. Adding to session...")
+    db.session.bulk_save_objects(boards)
+    print("Objects added to session. Committing...")
+    db.session.commit()
+    print("Seeded BulletinBoard table with student and staff boards.")
 
 def seed_sliding_scale_options():
     print("Preparing sliding scale options...")
@@ -72,5 +84,6 @@ if __name__ == "__main__":
     print("Entering app context...")
     with app.app_context():
         print("App context entered. Seeding now...")
+        seed_bulletin_boards()
         seed_sliding_scale_options()
     print("Seeding script finished.") 

@@ -251,6 +251,9 @@ class Announcement(db.Model):
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # Management user
     board_id = db.Column(db.Integer, db.ForeignKey('bulletin_boards.id'), nullable=False)
 
+    # Add relationship to get author information
+    author = db.relationship('User', foreign_keys=[author_id])
+
     def post_announcement(self):
         db.session.add(self)
         db.session.commit()
@@ -262,6 +265,8 @@ class Announcement(db.Model):
             'body': self.body,
             'date_created': self.date_created,
             'author_id': self.author_id,
+            'author_name': self.author.name if self.author else 'Unknown',
+            'author_role': self.author.role if self.author else 'Unknown',
             'board_id': self.board_id
         }
 
