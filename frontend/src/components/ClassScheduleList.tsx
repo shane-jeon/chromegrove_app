@@ -24,6 +24,7 @@ interface ClassScheduleListProps {
   viewType: "student" | "management" | "staff";
   onBookClass?: (classItem: ClassItem) => void;
   onCancelClass?: (classItem: ClassItem) => void;
+  onDeleteClass?: (classItem: ClassItem) => void;
   emptyMessage?: string;
 }
 
@@ -60,6 +61,7 @@ const ClassScheduleList: React.FC<ClassScheduleListProps> = ({
   viewType,
   onBookClass,
   onCancelClass,
+  onDeleteClass,
   emptyMessage = "No classes found.",
 }) => {
   const renderClassCard = (classItem: ClassItem) => {
@@ -144,8 +146,39 @@ const ClassScheduleList: React.FC<ClassScheduleListProps> = ({
                 </button>
               )
             ) : (
-              // Management view - just show a badge
-              <div className="management-badge">Management View</div>
+              // Management view - show delete button
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                }}>
+                <div className="management-badge">Management View</div>
+                {onDeleteClass && (
+                  <button
+                    className="delete-button"
+                    onClick={() => onDeleteClass(classItem)}
+                    style={{
+                      padding: "8px 16px",
+                      backgroundColor: "#e53e3e",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      transition: "background-color 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "#c53030";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "#e53e3e";
+                    }}>
+                    Delete Class
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>

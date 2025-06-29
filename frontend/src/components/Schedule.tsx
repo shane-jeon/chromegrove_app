@@ -26,6 +26,7 @@ interface ScheduleProps {
   role: "student" | "management";
   onBookClass?: (classItem: ClassItem) => void;
   onCancelClass?: (classItem: ClassItem) => void;
+  onDeleteClass?: (classItem: ClassItem) => void;
 }
 
 type ViewType = "list" | "calendar";
@@ -43,6 +44,7 @@ const Schedule: React.FC<ScheduleProps> = ({
   role,
   onBookClass,
   onCancelClass,
+  onDeleteClass,
 }) => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [viewType, setViewType] = useState<ViewType>("calendar");
@@ -127,6 +129,7 @@ const Schedule: React.FC<ScheduleProps> = ({
                 viewType={role}
                 onBookClass={onBookClass}
                 onCancelClass={onCancelClass}
+                onDeleteClass={onDeleteClass}
                 emptyMessage="No classes found for this date."
               />
             </div>
@@ -143,6 +146,7 @@ const Schedule: React.FC<ScheduleProps> = ({
               viewType={role}
               onBookClass={onBookClass}
               onCancelClass={onCancelClass}
+              onDeleteClass={onDeleteClass}
               emptyMessage={
                 role === "student"
                   ? "No classes available."

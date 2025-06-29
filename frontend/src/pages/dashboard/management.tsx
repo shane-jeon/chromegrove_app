@@ -9,20 +9,25 @@ import BulletinBoard, {
   type AnnouncementItem,
 } from "../../components/BulletinBoard";
 import Schedule from "../../components/Schedule";
+import DeleteClassModal from "../../components/DeleteClassModal";
 
 interface StudioClass {
-  id: number;
+  id?: number;
   class_name: string;
-  description: string;
+  description?: string;
   start_time: string;
   duration: number;
   instructor_id: string;
+  instructor_name?: string;
   max_capacity: number;
-  requirements: string;
-  recommended_attire: string;
-  recurrence_pattern: string;
+  requirements?: string;
+  recommended_attire?: string;
+  recurrence_pattern?: string;
   instance_id: string;
   enrolled_count: number;
+  is_enrolled?: boolean;
+  enrollment_id?: number;
+  is_instructing?: boolean;
 }
 
 interface Instructor {
@@ -34,6 +39,10 @@ interface Instructor {
 export default function ManagementDashboard() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedClassForDeletion, setSelectedClassForDeletion] =
+    useState<StudioClass | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [classes, setClasses] = useState<StudioClass[]>([]);
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [form, setForm] = useState<AddClassForm>({
@@ -168,6 +177,54 @@ export default function ManagementDashboard() {
     }
   };
 
+  const handleDeleteClass = (classItem: StudioClass) => {
+    setSelectedClassForDeletion(classItem);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async (scope: "single" | "future") => {
+    if (!selectedClassForDeletion) return;
+
+    setDeleteLoading(true);
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/studio-classes/cancel",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            instance_id: selectedClassForDeletion.instance_id,
+            scope: scope,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Refresh the classes list
+        const instancesRes = await fetch(
+          "http://localhost:5000/api/studio-classes/list",
+        );
+        const instancesData = await instancesRes.json();
+        if (instancesData.success) {
+          setClasses(instancesData.classes || []);
+        }
+        setShowDeleteModal(false);
+        setSelectedClassForDeletion(null);
+      } else {
+        alert(`Failed to cancel class: ${data.error}`);
+      }
+    } catch (error) {
+      console.error("Error canceling class:", error);
+      alert("Error canceling class. Please try again.");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen flex-col items-center bg-gray-50 px-4 py-10">
       <div className="mx-auto w-full max-w-6xl">
@@ -179,7 +236,11 @@ export default function ManagementDashboard() {
           style={{ minHeight: "500px" }}>
           {/* Left Column: Schedule */}
           <div className="flex flex-1 flex-col items-center justify-center">
-            <Schedule classes={classes} role="management" />
+            <Schedule
+              classes={classes}
+              role="management"
+              onDeleteClass={handleDeleteClass}
+            />
           </div>
           {/* Right Column: Management Controls + Bulletin Board */}
           <div className="flex flex-1 flex-col items-center justify-start gap-6">
@@ -304,6 +365,18 @@ export default function ManagementDashboard() {
         onClose={() => setShowAnnouncementModal(false)}
         onSubmit={handleAnnouncementSubmit}
         loading={announcementLoading}
+      />
+
+      {/* Delete Class Modal */}
+      <DeleteClassModal
+        show={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setSelectedClassForDeletion(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        classItem={selectedClassForDeletion}
+        loading={deleteLoading}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
-from models import StudioClass, ClassInstance, User
+from models import StudioClass, ClassInstance, User, db
 from repositories.class_repository import StudioClassRepository, ClassInstanceRepository
 from repositories.user_repository import UserRepository
 import calendar
@@ -368,6 +368,82 @@ class ClassService:
             target_date = target_date - timedelta(weeks=1)
         
         return target_date
+
+    def cancel_single_instance(self, instance_id: str) -> bool:
+        """Cancel a single class instance"""
+        try:
+            # Get the class instance
+            instance = ClassInstance.query.get(instance_id)
+            if not instance:
+                raise ValueError("Class instance not found")
+            
+            # Check if the class has already started
+            if instance.start_time <= datetime.utcnow():
+                raise ValueError("Cannot cancel a class that has already started")
+            
+            # Mark the instance as cancelled
+            instance.is_cancelled = True
+            
+            # Cancel all enrollments for this instance
+            from models import ClassEnrollment
+            enrollments = ClassEnrollment.query.filter_by(
+                instance_id=instance_id,
+                status='enrolled'
+            ).all()
+            
+            for enrollment in enrollments:
+                enrollment.status = 'cancelled'
+                enrollment.cancelled_at = datetime.utcnow()
+            
+            db.session.commit()
+            return True
+            
+        except Exception as e:
+            db.session.rollback()
+            raise e
+    
+    def cancel_future_instances(self, instance_id: str) -> bool:
+        """Cancel this instance and all future instances of the same class"""
+        try:
+            # Get the current instance
+            current_instance = ClassInstance.query.get(instance_id)
+            if not current_instance:
+                raise ValueError("Class instance not found")
+            
+            # Get the studio class
+            studio_class = StudioClass.query.get(current_instance.class_id)
+            if not studio_class:
+                raise ValueError("Studio class not found")
+            
+            # Get all future instances of this class (including the current one)
+            future_instances = ClassInstance.query.filter(
+                ClassInstance.class_id == current_instance.class_id,
+                ClassInstance.start_time >= current_instance.start_time,
+                ClassInstance.is_cancelled == False
+            ).all()
+            
+            # Cancel each future instance
+            for instance in future_instances:
+                # Mark the instance as cancelled
+                instance.is_cancelled = True
+                
+                # Cancel all enrollments for this instance
+                from models import ClassEnrollment
+                enrollments = ClassEnrollment.query.filter_by(
+                    instance_id=instance.instance_id,
+                    status='enrolled'
+                ).all()
+                
+                for enrollment in enrollments:
+                    enrollment.status = 'cancelled'
+                    enrollment.cancelled_at = datetime.utcnow()
+            
+            db.session.commit()
+            return True
+            
+        except Exception as e:
+            db.session.rollback()
+            raise e
 
 
 # Import at the end to avoid circular imports

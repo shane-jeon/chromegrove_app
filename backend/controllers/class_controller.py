@@ -512,4 +512,34 @@ class ClassController:
             })
             
         except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+    
+    def cancel_class(self):
+        """Handle class cancellation request for management users"""
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({"success": False, "error": "Missing JSON body"}), 400
+            
+            instance_id = data.get('instance_id')
+            scope = data.get('scope', 'single')  # 'single' or 'future'
+            
+            if not instance_id:
+                return jsonify({"success": False, "error": "Missing instance_id"}), 400
+            
+            if scope not in ['single', 'future']:
+                return jsonify({"success": False, "error": "Invalid scope. Must be 'single' or 'future'"}), 400
+            
+            # Cancel the class(es)
+            if scope == 'single':
+                self.class_service.cancel_single_instance(instance_id)
+            else:
+                self.class_service.cancel_future_instances(instance_id)
+            
+            return jsonify({
+                "success": True,
+                "message": f"Class{'es' if scope == 'future' else ''} cancelled successfully"
+            })
+            
+        except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500 

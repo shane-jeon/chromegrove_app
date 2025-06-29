@@ -119,6 +119,10 @@ def remove_class_staff(class_id, staff_id):
 def change_class_instructor(class_id):
     return class_controller.change_class_instructor(class_id)
 
+@app.route('/api/studio-classes/cancel', methods=['POST'])
+def cancel_class():
+    return class_controller.cancel_class()
+
 # Attendance routes using AttendanceController
 @app.route('/api/staff/assigned-classes', methods=['GET'])
 def get_staff_assigned_classes():

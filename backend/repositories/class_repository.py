@@ -32,9 +32,12 @@ class ClassInstanceRepository(SQLAlchemyRepository[ClassInstance]):
         return self.find_by(template_id=template_id)
     
     def find_future_instances(self) -> List[ClassInstance]:
-        """Find future class instances"""
+        """Find future class instances that are not cancelled"""
         now = datetime.now()
-        return self.query().filter(ClassInstance.start_time > now).all()
+        return self.query().filter(
+            ClassInstance.start_time > now,
+            ClassInstance.is_cancelled == False
+        ).all()
     
     def find_instances_by_date_range(self, start_date: datetime, end_date: datetime) -> List[ClassInstance]:
         """Find instances within a date range"""
