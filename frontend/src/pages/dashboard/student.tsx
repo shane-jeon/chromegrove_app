@@ -46,15 +46,6 @@ interface User {
   name: string;
 }
 
-interface MembershipStatus {
-  has_membership: boolean;
-  membership_type?: string;
-  start_date?: string;
-  end_date?: string;
-  is_active?: boolean;
-  message?: string;
-}
-
 // Main Layout
 const DashboardContainer = styled.div`
   display: flex;
@@ -579,10 +570,6 @@ export default function StudentDashboard() {
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>("studio");
 
-  // Membership status state
-  const [membershipStatus, setMembershipStatus] =
-    useState<MembershipStatus | null>(null);
-
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -779,26 +766,6 @@ export default function StudentDashboard() {
     }
   }, [user]);
 
-  // Fetch membership status on mount or when user changes
-  useEffect(() => {
-    async function fetchMembershipStatus() {
-      if (!user?.id) return;
-      try {
-        const res = await fetch("http://localhost:5000/api/membership/status", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ clerk_user_id: user.id }),
-        });
-        const data = await res.json();
-        setMembershipStatus(data.membership);
-      } catch (error) {
-        console.error("Error fetching membership status:", error);
-        setMembershipStatus(null);
-      }
-    }
-    fetchMembershipStatus();
-  }, [user]);
-
   // Filter and sort classes based on active tab
   const now = new Date();
 
@@ -930,56 +897,88 @@ export default function StudentDashboard() {
       return;
     }
 
-    // Check membership before showing payment modal
-    if (membershipStatus?.has_membership) {
-      // Book the class directly (call backend API)
-      try {
-        const response = await fetch(
-          "http://localhost:5000/api/studio-classes/book",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              clerk_user_id: currentUser.clerk_user_id,
-              instance_id: c.instance_id,
-            }),
-          },
-        );
-        const data = await response.json();
-        if (data.success) {
-          // Show confirmation modal
-          setShowSuccessModal(true);
-          setTimeout(() => setShowSuccessModal(false), 2000);
-          // Optionally refresh enrolled classes
-          await refreshEnrolledClasses();
-        } else {
-          alert("Failed to book class: " + (data.error || "Unknown error"));
-        }
-      } catch (error) {
-        console.error("Error booking class:", error);
-        alert("Failed to book class. Please try again.");
-      }
-      return;
-    }
-
-    // If no membership, show payment modal as before
-    if (loadingSlidingScale) {
-      alert(
-        "Payment options are still loading. Please wait a moment and try again.",
+    // Check booking eligibility first
+    try {
+      const eligibilityResponse = await fetch(
+        "http://localhost:5000/api/studio-classes/check-eligibility",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            clerk_user_id: currentUser.clerk_user_id,
+            instance_id: c.instance_id,
+          }),
+        },
       );
-      return;
-    }
 
-    if (slidingScaleOptions.length === 0) {
-      alert("No payment options available. Please try again later.");
-      return;
-    }
+      const eligibilityData = await eligibilityResponse.json();
 
-    setSelectedClass(c);
-    setSelectedOption(null);
-    setSelectedAmount(0);
-    setPaymentError("");
-    setShowPaymentModal(true);
+      if (!eligibilityData.success) {
+        alert(
+          "Failed to check booking eligibility: " +
+            (eligibilityData.error || "Unknown error"),
+        );
+        return;
+      }
+
+      const { booking_eligibility } = eligibilityData;
+
+      // If can book for free, book directly
+      if (booking_eligibility.can_book_free) {
+        try {
+          const response = await fetch(
+            "http://localhost:5000/api/studio-classes/book",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                clerk_user_id: currentUser.clerk_user_id,
+                instance_id: c.instance_id,
+              }),
+            },
+          );
+          const data = await response.json();
+          if (data.success) {
+            // Show confirmation modal
+            setShowSuccessModal(true);
+            setTimeout(() => setShowSuccessModal(false), 2000);
+            // Optionally refresh enrolled classes
+            await refreshEnrolledClasses();
+          } else {
+            alert("Failed to book class: " + (data.error || "Unknown error"));
+          }
+        } catch (error) {
+          console.error("Error booking class:", error);
+          alert("Failed to book class. Please try again.");
+        }
+        return;
+      }
+
+      // If requires payment, show payment modal
+      if (booking_eligibility.requires_payment) {
+        if (loadingSlidingScale) {
+          alert(
+            "Payment options are still loading. Please wait a moment and try again.",
+          );
+          return;
+        }
+
+        if (slidingScaleOptions.length === 0) {
+          alert("No payment options available. Please try again later.");
+          return;
+        }
+
+        setSelectedClass(c);
+        setSelectedOption(null);
+        setSelectedAmount(0);
+        setPaymentError("");
+        setShowPaymentModal(true);
+        return;
+      }
+    } catch (error) {
+      console.error("Error checking booking eligibility:", error);
+      alert("Failed to check booking eligibility. Please try again.");
+    }
   };
 
   const handlePaymentContinue = async () => {
