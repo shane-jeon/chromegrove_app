@@ -679,7 +679,24 @@ export default function StudentDashboard() {
 
   // Manual refresh function
   const handleManualRefresh = async () => {
-    await refreshEnrolledClasses();
+    setRefreshingData(true);
+    try {
+      // Refresh all classes
+      const allClassesResponse = await fetch(
+        "http://localhost:5000/api/studio-classes/list",
+      );
+      const allClassesData = await allClassesResponse.json();
+      setAllClasses(allClassesData.classes || []);
+
+      // Refresh enrolled classes
+      await refreshEnrolledClasses();
+
+      console.log("✅ All data refreshed successfully");
+    } catch (error) {
+      console.error("❌ Error refreshing data:", error);
+    } finally {
+      setRefreshingData(false);
+    }
   };
 
   useEffect(() => {
@@ -942,8 +959,8 @@ export default function StudentDashboard() {
             // Show confirmation modal
             setShowSuccessModal(true);
             setTimeout(() => setShowSuccessModal(false), 2000);
-            // Optionally refresh enrolled classes
-            await refreshEnrolledClasses();
+            // Refresh all class data to update capacity
+            await handleManualRefresh();
           } else {
             alert("Failed to book class: " + (data.error || "Unknown error"));
           }
@@ -1094,8 +1111,8 @@ export default function StudentDashboard() {
         setShowCancelModal(false);
         setClassToCancel(null);
 
-        // Refresh the enrolled classes data
-        await refreshEnrolledClasses();
+        // Refresh all class data to update capacity
+        await handleManualRefresh();
 
         // Show success modal
         setShowSuccessModal(true);
