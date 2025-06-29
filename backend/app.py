@@ -273,7 +273,9 @@ def get_announcements():
                     "id": announcement.id,
                     "title": announcement.title,
                     "body": announcement.body,
-                    "date_created": announcement.date_created.isoformat()
+                    "date_created": announcement.date_created.isoformat(),
+                    "author_name": announcement.author.name if announcement.author else 'Unknown',
+                    "author_role": announcement.author.role if announcement.author else 'Unknown'
                 }
                 for announcement in announcements
             ]
@@ -319,7 +321,9 @@ def create_announcement():
                 "id": announcement.id,
                 "title": announcement.title,
                 "body": announcement.body,
-                "date_created": announcement.date_created.isoformat()
+                "date_created": announcement.date_created.isoformat(),
+                "author_name": announcement.author.name if announcement.author else 'Unknown',
+                "author_role": announcement.author.role if announcement.author else 'Unknown'
             }
         }), 201
         
