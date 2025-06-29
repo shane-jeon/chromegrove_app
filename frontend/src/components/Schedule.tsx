@@ -19,6 +19,7 @@ interface ClassItem {
   recurrence_pattern?: string;
   is_enrolled?: boolean;
   enrollment_id?: number;
+  payment_type?: string;
 }
 
 interface ScheduleProps {

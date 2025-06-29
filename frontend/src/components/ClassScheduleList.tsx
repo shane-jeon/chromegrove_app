@@ -17,6 +17,7 @@ interface ClassItem {
   is_enrolled?: boolean;
   enrollment_id?: number;
   is_instructing?: boolean;
+  payment_type?: string;
 }
 
 interface ClassScheduleListProps {

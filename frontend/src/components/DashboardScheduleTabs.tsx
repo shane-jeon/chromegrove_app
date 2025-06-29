@@ -16,6 +16,7 @@ interface ClassItem {
   recommended_attire?: string;
   is_enrolled?: boolean;
   enrollment_id?: number;
+  payment_type?: string;
   is_instructing?: boolean;
 }
 
