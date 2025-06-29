@@ -33,12 +33,15 @@ class MembershipService:
             
             membership = student.membership
             print(f"[membership_service] Membership found: {membership}")
+            print(f"[membership_service] Membership cancelled: {membership.cancelled}")
+            
             result = {
                 "has_membership": True,
                 "membership_type": membership.membership_type,
                 "start_date": membership.start_date.isoformat(),
                 "end_date": membership.end_date.isoformat() if membership.end_date else None,
                 "is_active": membership.is_active(),
+                "is_cancelled": membership.cancelled,
                 "expires_at": membership.end_date.isoformat() if membership.end_date else None
             }
             print(f"[membership_service] Returning result: {result}")
@@ -168,6 +171,7 @@ class MembershipService:
                 new_end_date = datetime.utcnow() + timedelta(days=29)
             
             membership.end_date = new_end_date
+            membership.cancelled = True  # Mark as cancelled
             db.session.commit()
             
             return {
