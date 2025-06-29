@@ -147,6 +147,16 @@ interface MembershipStatus {
   message?: string;
 }
 
+interface MembershipOption {
+  id: number;
+  tier_name: string;
+  price_min: number;
+  price_max: number;
+  description: string;
+  category: string;
+  stripe_price_id?: string;
+}
+
 const MembershipBox: React.FC = () => {
   const { user } = useUser();
   const [status, setStatus] = useState<MembershipStatus | null>(null);
@@ -160,8 +170,12 @@ const MembershipBox: React.FC = () => {
   > | null>(null);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [purchaseUrl, setPurchaseUrl] = useState<string | null>(null);
-  const [availableOptions, setAvailableOptions] = useState<any[]>([]);
-  const [selectedOption, setSelectedOption] = useState<any | null>(null);
+  const [availableOptions, setAvailableOptions] = useState<MembershipOption[]>(
+    [],
+  );
+  const [selectedOption, setSelectedOption] = useState<MembershipOption | null>(
+    null,
+  );
   const [purchaseLoading, setPurchaseLoading] = useState(false);
 
   useEffect(() => {
@@ -244,7 +258,7 @@ const MembershipBox: React.FC = () => {
       const optData = await optRes.json();
       console.log("[MembershipBox] Membership options (raw):", optData);
       if (optData.options) {
-        optData.options.forEach((o: any, idx: number) => {
+        optData.options.forEach((o: MembershipOption, idx: number) => {
           console.log(
             `[MembershipBox] Option #${idx}: tier_name='${o.tier_name}', price_min=${o.price_min}, price_max=${o.price_max}, stripe_price_id=${o.stripe_price_id}, category=${o.category}`,
           );
@@ -352,7 +366,7 @@ const MembershipBox: React.FC = () => {
               </span>
             </DetailRow>
             <DetailRow>
-              <strong>Renewal Date:</strong>
+              <strong>Expiration Date:</strong>
               <span>
                 {status.end_date
                   ? new Date(status.end_date).toLocaleDateString()
@@ -363,13 +377,43 @@ const MembershipBox: React.FC = () => {
               <strong>Type:</strong>
               <span>{status.membership_type || "-"}</span>
             </DetailRow>
+            <DetailRow>
+              <strong>Status:</strong>
+              <span
+                style={{
+                  color: status.is_active ? "#38a169" : "#e53e3e",
+                  fontWeight: "600",
+                }}>
+                {status.is_active ? "Active" : "Expired"}
+              </span>
+            </DetailRow>
           </MembershipDetails>
-          <Button
-            danger
-            onClick={() => setShowCancelModal(true)}
-            disabled={loading}>
-            Cancel Membership
-          </Button>
+          {status.is_active ? (
+            <Button
+              danger
+              onClick={() => setShowCancelModal(true)}
+              disabled={loading}>
+              Cancel Membership
+            </Button>
+          ) : (
+            <>
+              <Info
+                style={{
+                  background: "#fff5f5",
+                  border: "1px solid #fed7d7",
+                  borderRadius: "8px",
+                  padding: "12px",
+                  color: "#c53030",
+                }}>
+                Your membership has expired. You can still book classes, but
+                you&apos;ll need to pay the drop-in rate for classes after your
+                expiration date.
+              </Info>
+              <Button onClick={handlePurchase} disabled={loading}>
+                Renew Membership
+              </Button>
+            </>
+          )}
         </>
       ) : (
         <>
@@ -438,7 +482,7 @@ const MembershipBox: React.FC = () => {
                 <div>No membership options available.</div>
               ) : (
                 <>
-                  {availableOptions.map((option) => (
+                  {availableOptions.map((option: MembershipOption) => (
                     <div
                       key={option.id}
                       style={{
