@@ -16,11 +16,12 @@ interface ClassItem {
   recurrence_pattern?: string;
   is_enrolled?: boolean;
   enrollment_id?: number;
+  is_instructing?: boolean;
 }
 
 interface ClassScheduleListProps {
   classes: ClassItem[];
-  viewType: "student" | "management";
+  viewType: "student" | "management" | "staff";
   onBookClass?: (classItem: ClassItem) => void;
   onCancelClass?: (classItem: ClassItem) => void;
   emptyMessage?: string;
@@ -114,8 +115,8 @@ const ClassScheduleList: React.FC<ClassScheduleListProps> = ({
 
           {/* Action Section */}
           <div className="action-section">
-            {viewType === "student" ? (
-              // Student view actions
+            {viewType === "student" || viewType === "staff" ? (
+              // Student or staff view actions
               isBooked ? (
                 <div>
                   <div className="enrolled-badge">Already Enrolled</div>
@@ -127,6 +128,10 @@ const ClassScheduleList: React.FC<ClassScheduleListProps> = ({
                     </button>
                   )}
                 </div>
+              ) : classItem.is_instructing ? (
+                <button className="book-button disabled" disabled>
+                  Instructing
+                </button>
               ) : isFull ? (
                 <button className="book-button disabled" disabled>
                   Full
