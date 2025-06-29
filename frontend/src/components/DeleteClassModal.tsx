@@ -4,8 +4,18 @@ import styled from "styled-components";
 interface ClassItem {
   instance_id: string;
   class_name: string;
+  instructor_id: string;
+  instructor_name?: string;
   start_time: string;
   duration: number;
+  max_capacity: number;
+  enrolled_count: number;
+  description?: string;
+  requirements?: string;
+  recommended_attire?: string;
+  is_enrolled?: boolean;
+  enrollment_id?: number;
+  payment_type?: string;
   recurrence_pattern?: string;
 }
 

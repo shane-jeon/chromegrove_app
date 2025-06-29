@@ -47,7 +47,7 @@ class StudioClassDTO:
 class ClassInstanceDTO:
     """Data Transfer Object for ClassInstance data"""
     
-    def __init__(self, instance: ClassInstance, studio_class: Optional[StudioClass] = None, is_enrolled: bool = False, enrollment_id: Optional[int] = None):
+    def __init__(self, instance: ClassInstance, studio_class: Optional[StudioClass] = None, is_enrolled: bool = False, enrollment_id: Optional[int] = None, payment_type: Optional[str] = None):
         self.instance_id = instance.instance_id
         self.class_id = instance.class_id
         self.start_time = instance.start_time.isoformat() if instance.start_time else None
@@ -58,6 +58,7 @@ class ClassInstanceDTO:
         self.is_full = instance.is_full
         self.is_enrolled = is_enrolled
         self.enrollment_id = enrollment_id
+        self.payment_type = payment_type
         
         # Studio class details if provided
         if studio_class:
@@ -92,6 +93,7 @@ class ClassInstanceDTO:
             "is_full": self.is_full,
             "is_enrolled": self.is_enrolled,
             "enrollment_id": self.enrollment_id,
+            "payment_type": self.payment_type,
             "class_name": self.class_name,
             "description": self.description,
             "requirements": self.requirements,
@@ -103,9 +105,9 @@ class ClassInstanceDTO:
         }
     
     @classmethod
-    def from_instance(cls, instance: ClassInstance, studio_class: Optional[StudioClass] = None, is_enrolled: bool = False, enrollment_id: Optional[int] = None) -> 'ClassInstanceDTO':
+    def from_instance(cls, instance: ClassInstance, studio_class: Optional[StudioClass] = None, is_enrolled: bool = False, enrollment_id: Optional[int] = None, payment_type: Optional[str] = None) -> 'ClassInstanceDTO':
         """Create DTO from ClassInstance model"""
-        return cls(instance, studio_class, is_enrolled, enrollment_id)
+        return cls(instance, studio_class, is_enrolled, enrollment_id, payment_type)
     
     @classmethod
     def from_instance_list(cls, instances: List[ClassInstance], studio_classes: Optional[Dict[int, StudioClass]] = None, enrollments: Optional[Dict[str, ClassEnrollment]] = None) -> List['ClassInstanceDTO']:
@@ -116,7 +118,8 @@ class ClassInstanceDTO:
             enrollment = enrollments.get(instance.instance_id) if enrollments else None
             is_enrolled = enrollment is not None
             enrollment_id = enrollment.id if enrollment else None
+            payment_type = enrollment.payment_type if enrollment else None
             
-            dto = cls(instance, studio_class, is_enrolled, enrollment_id)
+            dto = cls(instance, studio_class, is_enrolled, enrollment_id, payment_type)
             dtos.append(dto)
         return dtos 

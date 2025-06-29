@@ -125,6 +125,10 @@ def change_class_instructor(class_id):
 def cancel_class():
     return class_controller.cancel_class()
 
+@app.route('/api/studio-classes/book-with-credit', methods=['POST'])
+def book_studio_class_with_credit():
+    return class_controller.book_class_with_credit()
+
 # Attendance routes using AttendanceController
 @app.route('/api/staff/assigned-classes', methods=['GET'])
 def get_staff_assigned_classes():
