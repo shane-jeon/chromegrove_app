@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from models import StudioClass, ClassInstance, User, db
 from repositories.class_repository import StudioClassRepository, ClassInstanceRepository
 from repositories.user_repository import UserRepository
+from services.credit_service import CreditService
 import calendar
 
 class ClassService:
@@ -12,6 +13,7 @@ class ClassService:
         self.studio_class_repository = StudioClassRepository()
         self.class_instance_repository = ClassInstanceRepository()
         self.user_repository = UserRepository()
+        self.credit_service = CreditService()
     
     def get_all_classes(self) -> List[StudioClass]:
         """Get all active studio classes"""
@@ -96,15 +98,22 @@ class ClassService:
         """Get all studio class templates"""
         return self.studio_class_repository.get_all()
     
-    def book_class(self, student_id: int, instance_id: str, payment_id: Optional[int] = None) -> bool:
+    def book_class(self, student_id: int, instance_id: str, payment_id: Optional[int] = None, payment_type: str = 'drop-in') -> bool:
         """Book a class for a student"""
         try:
+            print(f"[book_class] 🟣 Attempting to register user {student_id} for class {instance_id} (payment_id={payment_id}, payment_type={payment_type})")
             instance = self.get_instance_by_id(instance_id)
             if not instance:
+                print(f"[book_class] ❌ Class instance not found for instance_id: {instance_id}")
                 raise ValueError("Class instance not found")
             
+            print(f"[book_class] ✅ Class instance found - class_id: {instance.class_id}, start_time: {instance.start_time}")
+            
             if instance.is_full:
+                print(f"[book_class] ❌ Class is full - enrolled_count: {instance.enrolled_count}, max_capacity: {instance.max_capacity}")
                 raise ValueError("Class is full")
+            
+            print(f"[book_class] ✅ Class has capacity - enrolled_count: {instance.enrolled_count}, max_capacity: {instance.max_capacity}")
             
             # Check if student is already enrolled
             from models import ClassEnrollment
@@ -115,13 +124,50 @@ class ClassService:
             ).first()
             
             if existing_enrollment:
+                print(f"[book_class] ❌ Student already enrolled - enrollment_id: {existing_enrollment.id}")
                 raise ValueError("Student already enrolled")
             
-            # Add student to class
-            instance.add_student(student_id, payment_id)
+            print(f"[book_class] ✅ No existing enrollment found, proceeding with booking")
+            
+            # Add student to class with payment type
+            enrollment = ClassEnrollment(
+                student_id=student_id,
+                instance_id=instance_id,
+                payment_id=payment_id,
+                payment_type=payment_type,
+                status='enrolled'
+            )
+            
+            print(f"[book_class] 📝 Creating enrollment object:")
+            print(f"[book_class] 📝   - student_id: {enrollment.student_id}")
+            print(f"[book_class] 📝   - instance_id: {enrollment.instance_id}")
+            print(f"[book_class] 📝   - payment_id: {enrollment.payment_id}")
+            print(f"[book_class] 📝   - payment_type: {enrollment.payment_type}")
+            print(f"[book_class] 📝   - status: {enrollment.status}")
+            
+            db.session.add(enrollment)
+            db.session.commit()
+            
+            print(f"[book_class] ✅ Booking entry saved: enrollment_id={enrollment.id}")
+            
+            # Verify the enrollment was actually saved
+            saved_enrollment = ClassEnrollment.query.get(enrollment.id)
+            if saved_enrollment:
+                print(f"[book_class] ✅ Enrollment verified in database:")
+                print(f"[book_class] ✅   - id: {saved_enrollment.id}")
+                print(f"[book_class] ✅   - student_id: {saved_enrollment.student_id}")
+                print(f"[book_class] ✅   - instance_id: {saved_enrollment.instance_id}")
+                print(f"[book_class] ✅   - payment_id: {saved_enrollment.payment_id}")
+                print(f"[book_class] ✅   - payment_type: {saved_enrollment.payment_type}")
+                print(f"[book_class] ✅   - status: {saved_enrollment.status}")
+            else:
+                print(f"[book_class] ❌ Enrollment not found in database after commit!")
+            
             return True
         except Exception as e:
-            from models import db
+            print(f"[book_class] ❌ Error during booking: {e}")
+            import traceback
+            print(f"[book_class] ❌ Error traceback: {traceback.format_exc()}")
             db.session.rollback()
             raise e
     
@@ -160,7 +206,7 @@ class ClassService:
             raise e
     
     def cancel_enrollment(self, student_id: int, instance_id: str) -> bool:
-        """Cancel a student's enrollment"""
+        """Cancel a student's enrollment and add credit if eligible"""
         try:
             from models import ClassEnrollment
             enrollment = ClassEnrollment.query.filter_by(
@@ -174,11 +220,16 @@ class ClassService:
             
             enrollment.status = 'cancelled'
             enrollment.cancelled_at = datetime.now()
-            from models import db
+            
+            # Add credit if eligible (drop-in payment)
+            credit = self.credit_service.add_credit_for_cancellation(
+                enrollment.id, 
+                "cancellation by student"
+            )
+            
             db.session.commit()
             return True
         except Exception as e:
-            from models import db
             db.session.rollback()
             raise e
     
@@ -384,7 +435,7 @@ class ClassService:
             # Mark the instance as cancelled
             instance.is_cancelled = True
             
-            # Cancel all enrollments for this instance
+            # Cancel all enrollments for this instance and add credits for eligible students
             from models import ClassEnrollment
             enrollments = ClassEnrollment.query.filter_by(
                 instance_id=instance_id,
@@ -394,6 +445,12 @@ class ClassService:
             for enrollment in enrollments:
                 enrollment.status = 'cancelled'
                 enrollment.cancelled_at = datetime.utcnow()
+                
+                # Add credit if eligible (drop-in payment)
+                self.credit_service.add_credit_for_cancellation(
+                    enrollment.id, 
+                    "cancellation by management"
+                )
             
             db.session.commit()
             return True
@@ -427,7 +484,7 @@ class ClassService:
                 # Mark the instance as cancelled
                 instance.is_cancelled = True
                 
-                # Cancel all enrollments for this instance
+                # Cancel all enrollments for this instance and add credits for eligible students
                 from models import ClassEnrollment
                 enrollments = ClassEnrollment.query.filter_by(
                     instance_id=instance.instance_id,
@@ -437,6 +494,12 @@ class ClassService:
                 for enrollment in enrollments:
                     enrollment.status = 'cancelled'
                     enrollment.cancelled_at = datetime.utcnow()
+                    
+                    # Add credit if eligible (drop-in payment)
+                    self.credit_service.add_credit_for_cancellation(
+                        enrollment.id, 
+                        "cancellation by management"
+                    )
             
             db.session.commit()
             return True
