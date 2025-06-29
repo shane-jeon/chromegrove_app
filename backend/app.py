@@ -17,6 +17,7 @@ from controllers.class_controller import ClassController
 from controllers.payment_controller import PaymentController
 from controllers.membership_controller import MembershipController
 from controllers.attendance_controller import AttendanceController
+from controllers.credit_controller import CreditController
 
 # Import DTOs
 from dtos.user_dto import UserDTO
@@ -44,6 +45,7 @@ class_controller = ClassController()
 payment_controller = PaymentController()
 membership_controller = MembershipController()
 attendance_controller = AttendanceController()
+credit_controller = CreditController()
 
 @app.route('/api/ping')
 def ping():
@@ -200,8 +202,10 @@ def get_membership_options():
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout_session():
     try:
+        print(f"[create-checkout-session] 🔍 Called with data: {request.get_json()}")
         data = request.get_json()
         if not data:
+            print(f"[create-checkout-session] ❌ Missing JSON body")
             return jsonify({"success": False, "error": "Missing JSON body"}), 400
         
         option_id = data.get('option_id')
@@ -211,7 +215,16 @@ def create_checkout_session():
         instance_id = data.get('instance_id')
         class_name = data.get('class_name')
         
+        print(f"[create-checkout-session] 📋 Extracted data:")
+        print(f"[create-checkout-session] 📋   - option_id: {option_id}")
+        print(f"[create-checkout-session] 📋   - custom_amount: {custom_amount}")
+        print(f"[create-checkout-session] 📋   - student_id: {student_id}")
+        print(f"[create-checkout-session] 📋   - clerk_user_id: {clerk_user_id}")
+        print(f"[create-checkout-session] 📋   - instance_id: {instance_id}")
+        print(f"[create-checkout-session] 📋   - class_name: {class_name}")
+        
         if not option_id:
+            print(f"[create-checkout-session] ❌ Missing option_id")
             return jsonify({"success": False, "error": "Missing option_id"}), 400
         
         # Find student
@@ -226,10 +239,14 @@ def create_checkout_session():
                 student = None
         
         if not student:
+            print(f"[create-checkout-session] ❌ Student not found")
             return jsonify({"success": False, "error": "Student not found"}), 404
+        
+        print(f"[create-checkout-session] ✅ Student found - id: {student.id}, name: {student.name}")
         
         # Validate payment option
         option, amount = PaymentService.validate_payment_option(option_id, custom_amount)
+        print(f"[create-checkout-session] ✅ Payment option validated - tier: {option.tier_name}, amount: {amount}")
         
         # Create payment record
         payment = PaymentService.create_payment(
@@ -239,12 +256,18 @@ def create_checkout_session():
             instance_id, 
             class_name
         )
+        print(f"[create-checkout-session] ✅ Payment record created - payment_id: {payment.id}")
         
         # Create Stripe checkout session
         success_url = data.get('success_url', f'http://localhost:3000/dashboard/student?payment=success&session_id={{CHECKOUT_SESSION_ID}}')
         cancel_url = data.get('cancel_url', 'http://localhost:3000/dashboard/student?canceled=true')
         
+        print(f"[create-checkout-session] 🔗 Creating Stripe session with:")
+        print(f"[create-checkout-session] 🔗   - success_url: {success_url}")
+        print(f"[create-checkout-session] 🔗   - cancel_url: {cancel_url}")
+        
         session = PaymentService.create_stripe_checkout_session(payment.id, success_url, cancel_url)
+        print(f"[create-checkout-session] ✅ Stripe session created - session_id: {session.id}")
         
         return jsonify({
             "success": True,
@@ -253,19 +276,30 @@ def create_checkout_session():
         })
         
     except ValueError as e:
+        print(f"[create-checkout-session] ❌ ValueError: {e}")
         return jsonify({"success": False, "error": str(e)}), 400
     except Exception as e:
+        print(f"[create-checkout-session] ❌ Exception: {e}")
+        import traceback
+        print(f"[create-checkout-session] ❌ Exception traceback: {traceback.format_exc()}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/verify-payment', methods=['GET'])
 def verify_payment():
     try:
+        print(f"[verify-payment endpoint] 🔍 Called with query params: {request.args}")
         session_id = request.args.get('session_id')
         if not session_id:
+            print(f"[verify-payment endpoint] ❌ Missing session_id parameter")
             return jsonify({"success": False, "error": "Missing session_id parameter"}), 400
         
+        print(f"[verify-payment endpoint] 💳 Processing session_id: {session_id}")
+        
         payment = PaymentService.verify_payment(session_id)
+        print(f"[verify-payment endpoint] 📋 PaymentService.verify_payment result: {payment}")
+        
         if payment:
+            print(f"[verify-payment endpoint] ✅ Payment verified successfully")
             return jsonify({
                 "success": True,
                 "payment": {
@@ -278,9 +312,13 @@ def verify_payment():
                 }
             })
         else:
+            print(f"[verify-payment endpoint] ❌ Payment not found or not completed")
             return jsonify({"success": False, "error": "Payment not found or not completed"}), 404
             
     except Exception as e:
+        print(f"[verify-payment endpoint] ❌ Exception: {e}")
+        import traceback
+        print(f"[verify-payment endpoint] ❌ Exception traceback: {traceback.format_exc()}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/webhook/stripe', methods=['POST'])
@@ -302,6 +340,11 @@ def stripe_webhook():
 
     # Handle the event
     try:
+        print("[webhook] Event data:", event)
+        if event['type'] == 'checkout.session.completed':
+            session = event['data']['object']
+            print("[webhook] Stripe session completed. Session data:", session)
+            print("[webhook] Metadata received:", session.get('metadata'))
         success = PaymentService.handle_webhook_event(event)
         if success:
             print("✅ Payment processed successfully!")
@@ -393,6 +436,19 @@ def create_announcement():
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
+
+# Credit routes using CreditController
+@app.route('/api/credits/student', methods=['GET'])
+def get_student_credits():
+    return credit_controller.get_student_credits()
+
+@app.route('/api/credits/history', methods=['GET'])
+def get_credit_history():
+    return credit_controller.get_credit_history()
+
+@app.route('/api/credits/use', methods=['POST'])
+def use_credit_for_booking():
+    return credit_controller.use_credit_for_booking()
 
 if __name__ == '__main__':
     app.run(debug=True) 

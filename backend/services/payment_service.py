@@ -128,41 +128,73 @@ class PaymentService:
     def verify_payment(session_id: str) -> Optional[Payment]:
         """Verify a payment using Stripe session ID"""
         try:
-            print(f"[verify_payment] Called with session_id={session_id}")
+            print(f"[verify_payment] 🔍 Called with session_id={session_id}")
             session = stripe.checkout.Session.retrieve(session_id)
-            print(f"[verify_payment] Stripe session: {session}")
+            print(f"[verify_payment] 📊 Stripe session payment_status: {session.payment_status}")
+            print(f"[verify_payment] 📊 Stripe session metadata: {session.metadata}")
+            
             if session.payment_status == 'paid':
                 payment_id = int(session.metadata.get('payment_id'))
+                print(f"[verify_payment] 💳 Payment ID from metadata: {payment_id}")
+                
                 payment = db.session.get(Payment, payment_id)
-                print(f"[verify_payment] Payment found: {payment}")
+                print(f"[verify_payment] 📋 Payment found: {payment}")
+                print(f"[verify_payment] 📋 Payment details - student_id: {payment.student_id}, instance_id: {payment.instance_id}, class_name: {payment.class_name}, status: {payment.status}")
+                
                 if payment:
                     payment.status = 'completed'
                     db.session.commit()
+                    print(f"[verify_payment] ✅ Payment status updated to 'completed'")
+                    print(f"[verify_payment] 🟣 Stripe payment received for user: {payment.student_id}, class: {payment.instance_id}")
                     
                     # Check if this is a membership payment
                     if payment.class_name and 'Membership' in payment.class_name:
-                        print(f"[verify_payment] Processing membership payment")
+                        print(f"[verify_payment] 🏢 Processing membership payment")
                         try:
                             # Activate membership directly
                             PaymentService._activate_membership(payment.id)
-                            print(f"[verify_payment] Membership activated successfully")
+                            print(f"[verify_payment] ✅ Membership activated successfully")
                         except Exception as e:
-                            print(f"[verify_payment] Membership activation error: {e}")
+                            print(f"[verify_payment] ❌ Membership activation error: {e}")
                     else:
                         # Enroll the student in the class instance if not already enrolled
-                        print(f"[verify_payment] Attempting enrollment: student_id={payment.student_id}, instance_id={payment.instance_id}, payment_id={payment.id}")
+                        print(f"[verify_payment] 🎓 Attempting to register user for class: {payment.instance_id}")
+                        print(f"[verify_payment] 🎓 Enrollment details - student_id: {payment.student_id}, instance_id: {payment.instance_id}, payment_id: {payment.id}")
+                        
                         if payment.student_id and payment.instance_id:
                             try:
-                                result = ClassService().book_class(payment.student_id, payment.instance_id, payment.id)
-                                print(f"[verify_payment] Enrollment result: {result}")
+                                print(f"[verify_payment] 🎓 Calling ClassService.book_class with payment_type='drop-in'")
+                                result = ClassService().book_class(payment.student_id, payment.instance_id, payment.id, 'drop-in')
+                                print(f"[verify_payment] ✅ Booking entry saved: {result}")
+                                
+                                # Verify enrollment was created
+                                from models import ClassEnrollment
+                                enrollment = ClassEnrollment.query.filter_by(
+                                    student_id=payment.student_id,
+                                    instance_id=payment.instance_id,
+                                    payment_id=payment.id
+                                ).first()
+                                print(f"[verify_payment] 🔍 Enrollment verification - found: {enrollment is not None}")
+                                if enrollment:
+                                    print(f"[verify_payment] 🔍 Enrollment details - id: {enrollment.id}, status: {enrollment.status}, payment_type: {enrollment.payment_type}")
+                                
                             except Exception as e:
-                                print(f"[verify_payment] Enrollment error: {e}")
+                                print(f"[verify_payment] ❌ Enrollment error: {e}")
+                                import traceback
+                                print(f"[verify_payment] ❌ Enrollment error traceback: {traceback.format_exc()}")
                         else:
-                            print(f"[verify_payment] Missing student_id or instance_id for enrollment")
+                            print(f"[verify_payment] ❌ Missing student_id or instance_id for enrollment")
+                            print(f"[verify_payment] ❌ student_id: {payment.student_id}, instance_id: {payment.instance_id}")
                     return payment
+                else:
+                    print(f"[verify_payment] ❌ Payment not found for ID: {payment_id}")
+            else:
+                print(f"[verify_payment] ❌ Payment not completed, status: {session.payment_status}")
             return None
         except Exception as e:
-            print(f"[verify_payment] Exception: {e}")
+            print(f"[verify_payment] ❌ Exception: {e}")
+            import traceback
+            print(f"[verify_payment] ❌ Exception traceback: {traceback.format_exc()}")
             raise e
     
     @staticmethod
@@ -221,18 +253,36 @@ class PaymentService:
         try:
             if event['type'] == 'checkout.session.completed':
                 session = event['data']['object']
+                print("[handle_webhook_event] Stripe session completed. Session:", session)
                 payment_id = session.get('metadata', {}).get('payment_id')
+                print(f"[handle_webhook_event] Payment ID from metadata: {payment_id}")
                 if payment_id:
                     payment = db.session.get(Payment, int(payment_id))
+                    print(f"[handle_webhook_event] Payment lookup result: {payment}")
                     if payment:
                         payment.status = 'completed'
                         db.session.commit()
+                        print(f"[handle_webhook_event] Payment status updated to 'completed' for payment_id={payment.id}")
                         # Activate membership if this is a membership payment
                         if payment.class_name and 'Membership' in payment.class_name:
+                            print(f"[handle_webhook_event] Detected membership payment, activating membership...")
                             PaymentService._activate_membership(payment.id)
+                        else:
+                            # Enroll the student in the class instance if not already enrolled
+                            print(f"[handle_webhook_event] Attempting to register user: {payment.student_id} for class: {payment.instance_id} with payment_id: {payment.id}")
+                            try:
+                                result = ClassService().book_class(payment.student_id, payment.instance_id, payment.id, 'drop-in')
+                                print(f"[handle_webhook_event] Booking result: {result}")
+                            except Exception as e:
+                                print(f"[handle_webhook_event] ❌ Booking error: {e}")
+                                import traceback
+                                print(traceback.format_exc())
                         return True
             return False
         except Exception as e:
+            print(f"[handle_webhook_event] ❌ Exception: {e}")
+            import traceback
+            print(traceback.format_exc())
             raise e
     
     @staticmethod
