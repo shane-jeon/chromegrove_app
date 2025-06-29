@@ -162,6 +162,7 @@ class Membership(db.Model):
     membership_type = db.Column(db.String(64), nullable=False)  # e.g., 'monthly', 'annual', etc.
     start_date = db.Column(db.DateTime, nullable=False)
     end_date = db.Column(db.DateTime, nullable=True)
+    cancelled = db.Column(db.Boolean, default=False, nullable=False)  # Track if membership was cancelled
 
     # Relationships - no backrefs to avoid conflicts
     students = db.relationship('Student', backref='membership')
@@ -398,6 +399,7 @@ class ClassEnrollment(db.Model):
     student_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     instance_id = db.Column(db.String(50), db.ForeignKey('class_instances.instance_id'), nullable=False)
     payment_id = db.Column(db.Integer, db.ForeignKey('payments.id'), nullable=True)
+    payment_type = db.Column(db.String(32), nullable=False, default='drop-in')  # 'drop-in', 'membership', 'staff'
     status = db.Column(db.String(32), nullable=False, default='enrolled')  # 'enrolled', 'cancelled', 'attended', 'missed'
     enrolled_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     cancelled_at = db.Column(db.DateTime, nullable=True)
@@ -426,3 +428,35 @@ class ClassEnrollment(db.Model):
         self.attendance_marked_at = datetime.utcnow()
         self.marked_by_staff_id = staff_id
         db.session.commit()
+
+class ClassCredit(db.Model):
+    __tablename__ = 'class_credits'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    used = db.Column(db.Boolean, default=False, nullable=False)
+    used_at = db.Column(db.DateTime, nullable=True)
+    reason = db.Column(db.String(64), nullable=False)  # 'cancellation by student', 'cancellation by management'
+    source_enrollment_id = db.Column(db.Integer, db.ForeignKey('class_enrollments.id'), nullable=True)
+    
+    # Relationships
+    student = db.relationship('User', foreign_keys=[student_id], backref='credits')
+    source_enrollment = db.relationship('ClassEnrollment', foreign_keys=[source_enrollment_id])
+
+    def __repr__(self):
+        return f"<ClassCredit id={self.id} student_id={self.student_id} used={self.used} reason={self.reason}>"
+    
+    def use_credit(self):
+        """Mark this credit as used"""
+        if self.used:
+            raise ValueError("Credit has already been used")
+        
+        self.used = True
+        self.used_at = datetime.utcnow()
+        db.session.commit()
+    
+    @property
+    def is_available(self):
+        """Check if this credit is available for use"""
+        return not self.used
