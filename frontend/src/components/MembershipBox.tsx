@@ -27,8 +27,8 @@ const Info = styled.div`
   margin-bottom: 16px;
 `;
 
-const Button = styled.button<{ danger?: boolean }>`
-  background: ${({ danger }) => (danger ? "#e53e3e" : "#805ad5")};
+const Button = styled.button<{ $danger?: boolean }>`
+  background: ${({ $danger }) => ($danger ? "#e53e3e" : "#805ad5")};
   color: white;
   border: none;
   border-radius: 8px;
@@ -40,7 +40,7 @@ const Button = styled.button<{ danger?: boolean }>`
   transition: all 0.2s ease;
 
   &:hover {
-    background: ${({ danger }) => (danger ? "#c53030" : "#6b46c1")};
+    background: ${({ $danger }) => ($danger ? "#c53030" : "#6b46c1")};
     transform: translateY(-1px);
   }
 
@@ -144,6 +144,7 @@ interface MembershipStatus {
   start_date?: string;
   end_date?: string;
   is_active?: boolean;
+  is_cancelled?: boolean;
   message?: string;
 }
 
@@ -381,16 +382,43 @@ const MembershipBox: React.FC = () => {
               <strong>Status:</strong>
               <span
                 style={{
-                  color: status.is_active ? "#38a169" : "#e53e3e",
+                  color: status.is_cancelled
+                    ? "#e53e3e"
+                    : status.is_active
+                    ? "#38a169"
+                    : "#e53e3e",
                   fontWeight: "600",
                 }}>
-                {status.is_active ? "Active" : "Expired"}
+                {status.is_cancelled
+                  ? "Cancelled"
+                  : status.is_active
+                  ? "Active"
+                  : "Expired"}
               </span>
             </DetailRow>
           </MembershipDetails>
-          {status.is_active ? (
+          {status.is_cancelled ? (
+            <>
+              <Info
+                style={{
+                  background: "#fff5f5",
+                  border: "1px solid #fed7d7",
+                  borderRadius: "8px",
+                  padding: "12px",
+                  color: "#c53030",
+                }}>
+                Your membership has been cancelled. You will keep access until
+                the day before your next renewal date.
+              </Info>
+              <Button
+                disabled
+                style={{ background: "#a0aec0", cursor: "not-allowed" }}>
+                Membership Cancelled
+              </Button>
+            </>
+          ) : status.is_active ? (
             <Button
-              danger
+              $danger
               onClick={() => setShowCancelModal(true)}
               disabled={loading}>
               Cancel Membership
@@ -443,7 +471,7 @@ const MembershipBox: React.FC = () => {
               <Button onClick={() => setShowCancelModal(false)}>
                 Keep Membership
               </Button>
-              <Button danger onClick={handleCancel}>
+              <Button $danger onClick={handleCancel}>
                 Confirm Cancel
               </Button>
             </ModalActions>
