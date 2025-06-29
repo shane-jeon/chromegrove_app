@@ -81,6 +81,10 @@ def get_studio_class_templates():
 def book_studio_class():
     return class_controller.book_class()
 
+@app.route('/api/studio-classes/check-eligibility', methods=['POST'])
+def check_booking_eligibility():
+    return class_controller.check_booking_eligibility()
+
 @app.route('/api/students/enrolled-classes')
 def get_student_enrolled_classes():
     return class_controller.get_student_enrolled_classes()
