@@ -12,3 +12,6 @@ __pycache__/
 *.pyd
 .Python
 *.so
+
+# Ignore all .txt files in the project root
+/*.txt

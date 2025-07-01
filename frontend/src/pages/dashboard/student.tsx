@@ -8,6 +8,7 @@ import BulletinBoard, {
   type AnnouncementItem,
 } from "../../components/BulletinBoard";
 import LoadingSpinner from "../../components/LoadingSpinner";
+import Schedule from "../../components/Schedule";
 
 interface ClassItem {
   instance_id: string;
@@ -64,40 +65,56 @@ interface User {
 // Main Layout
 const DashboardContainer = styled.div`
   display: flex;
-  gap: 24px;
-  padding: 24px;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 32px;
+  padding: 32px 32px 32px 32px;
   max-width: 1400px;
   margin: 0 auto;
   min-height: 100vh;
+  box-sizing: border-box;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     flex-direction: column;
-    padding: 16px;
+    gap: 24px;
+    padding: 20px 8px;
   }
 `;
 
-// Left Side - Class Schedule (70%)
+// Left Side - Class Schedule (60-65%)
 const ScheduleContainer = styled.div`
-  flex: 1;
+  flex: 1.6;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 24px;
-  min-width: 0; /* Allow flex item to shrink */
+  min-height: 700px;
+  box-sizing: border-box;
 
-  @media (max-width: 768px) {
-    flex: 1;
+  @media (max-width: 1024px) {
+    flex: unset;
+    width: 100%;
+    min-height: 500px;
   }
 `;
 
-// Right Side - Membership + Bulletin Board
+// Right Side - Membership + Bulletin Board (35-40%)
 const RightSideContainer = styled.div`
+  flex: 1;
+  min-width: 320px;
+  max-width: 420px;
   display: flex;
   flex-direction: column;
-  flex: 0 0 320px;
-  min-width: 0; /* Allow flex item to shrink */
+  gap: 24px;
+  align-items: flex-start;
+  box-sizing: border-box;
 
-  @media (max-width: 768px) {
-    flex: 1;
+  @media (max-width: 1024px) {
+    flex: unset;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    align-items: stretch;
   }
 `;
 
@@ -148,8 +165,8 @@ const TabButton = styled.button<{ active: boolean }>`
 
 const TabContent = styled.div`
   padding: 24px;
-  height: 400px;
-  overflow-y: auto;
+  /* height: 400px; */
+  /* overflow-y: auto; */
 
   /* Custom scrollbar styling */
   &::-webkit-scrollbar {
@@ -172,11 +189,11 @@ const TabContent = styled.div`
 
   /* Responsive height adjustments */
   @media (max-width: 768px) {
-    height: 350px;
+    /* height: 350px; */
   }
 
   @media (max-width: 480px) {
-    height: 300px;
+    /* height: 300px; */
   }
 `;
 
@@ -1085,12 +1102,11 @@ export default function StudentDashboard() {
             <p>Check back later for new class offerings!</p>
           </EmptyState>
         ) : (
-          <ClassScheduleList
+          <Schedule
             classes={enhancedStudioClasses}
-            viewType="student"
+            role="student"
             onBookClass={handleBookClassClick}
             onCancelClass={handleCancelClass}
-            emptyMessage="No upcoming classes found."
           />
         );
       case "upcoming":
