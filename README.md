@@ -120,3 +120,11 @@ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your-clerk-publishable-key
   cd backend
   python -m pytest
   ```
+
+## Use of Generative AI
+
+Generative AI tools were utilized during the development of this project strictly as an aid to assist in specific technical areas, including:
+
+- Ensuring adherence to GRASP (General Responsibility Assignment Software Patterns) principles in code structure and design decisions.
+- Providing guidance and suggestions for CSS styling and user interface improvements.
+- Assisting in revising project documentation to ensure technical accuracy and clarity.
