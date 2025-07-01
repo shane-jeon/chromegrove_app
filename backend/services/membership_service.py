@@ -14,26 +14,34 @@ class MembershipService:
     def get_membership_status(self, clerk_user_id: str) -> Dict[str, Any]:
         """Get membership status for a student"""
         try:
-            print(f"[membership_service] Looking up user with clerk_user_id: {clerk_user_id}")
+            # Comment out debug prints
+            # print(f"[membership_service] Looking up user with clerk_user_id: {clerk_user_id}")
             student = self.user_service.get_user_by_clerk_id(clerk_user_id)
-            print(f"[membership_service] Found user: {student}")
+            # Comment out debug prints
+            # print(f"[membership_service] Found user: {student}")
             
             if not student:
-                print("[membership_service] User not found")
+                # Comment out debug prints
+                # print("[membership_service] User not found")
                 return {"has_membership": False, "message": "User not found"}
             
             if student.discriminator != 'student':
-                print(f"[membership_service] User is not a student, type: {student.discriminator}")
+                # Comment out debug prints
+                # print(f"[membership_service] User is not a student, type: {student.discriminator}")
                 return {"has_membership": False, "message": "User not found or not a student"}
             
-            print(f"[membership_service] Student has_membership: {student.has_membership}")
+            # Comment out debug prints
+            # print(f"[membership_service] Student has_membership: {student.has_membership}")
             if not student.has_membership:
-                print("[membership_service] No active membership")
+                # Comment out debug prints
+                # print("[membership_service] No active membership")
                 return {"has_membership": False, "message": "No active membership"}
             
             membership = student.membership
-            print(f"[membership_service] Membership found: {membership}")
-            print(f"[membership_service] Membership cancelled: {membership.cancelled}")
+            # Comment out debug prints
+            # print(f"[membership_service] Membership found: {membership}")
+            # Comment out debug prints
+            # print(f"[membership_service] Membership cancelled: {membership.cancelled}")
             
             result = {
                 "has_membership": True,
@@ -44,11 +52,13 @@ class MembershipService:
                 "is_cancelled": membership.cancelled,
                 "expires_at": membership.end_date.isoformat() if membership.end_date else None
             }
-            print(f"[membership_service] Returning result: {result}")
+            # Comment out debug prints
+            # print(f"[membership_service] Returning result: {result}")
             return result
             
         except Exception as e:
-            print(f"[membership_service] Exception: {e}")
+            # Comment out debug prints
+            # print(f"[membership_service] Exception: {e}")
             raise Exception(f"Error getting membership status: {str(e)}")
     
     def create_membership_payment(self, clerk_user_id: str, option_id: int, custom_amount: Optional[float] = None) -> Dict[str, str]:
@@ -271,7 +281,8 @@ class MembershipService:
             }
             
         except Exception as e:
-            print(f"[membership_service] Error checking free booking eligibility: {e}")
+            # Comment out debug prints
+            # print(f"[membership_service] Error checking free booking eligibility: {e}")
             return {
                 "can_book_free": False,
                 "reason": f"Error checking eligibility: {str(e)}",

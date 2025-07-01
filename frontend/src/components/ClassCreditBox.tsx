@@ -216,13 +216,15 @@ const ClassCreditBox: React.FC<ClassCreditBoxProps> = ({
     setLoading(true);
     setError(null);
     try {
-      console.log("[ClassCreditBox] Fetching credits for user:", user.id);
+      // Comment out debug logs
+      // console.log("[ClassCreditBox] Fetching credits for user:", user.id);
       const res = await fetch(
         `http://localhost:5000/api/credits/student?clerk_user_id=${user.id}`,
       );
 
       const data = await res.json();
-      console.log("[ClassCreditBox] Credits response:", data);
+      // Comment out debug logs
+      // console.log("[ClassCreditBox] Credits response:", data);
 
       if (data.success) {
         setCreditCount(data.credit_count || 0);
@@ -230,7 +232,8 @@ const ClassCreditBox: React.FC<ClassCreditBoxProps> = ({
         setError(data.error || "Failed to fetch credits");
       }
     } catch (err) {
-      console.error("[ClassCreditBox] Fetch error:", err);
+      // Comment out debug logs
+      // console.error("[ClassCreditBox] Fetch error:", err);
       setError("Failed to fetch credits. Please try again later.");
     } finally {
       setLoading(false);
@@ -258,10 +261,11 @@ const ClassCreditBox: React.FC<ClassCreditBoxProps> = ({
     setCreditLoading(true);
 
     try {
-      console.log(
-        "[ClassCreditBox] Using credit for class:",
-        selectedClass.instance_id,
-      );
+      // Comment out debug logs
+      // console.log(
+      //   "[ClassCreditBox] Using credit for class:",
+      //   selectedClass.instance_id,
+      // );
 
       // Use the new credit-based booking endpoint
       const response = await fetch(
@@ -277,7 +281,8 @@ const ClassCreditBox: React.FC<ClassCreditBoxProps> = ({
       );
 
       const data = await response.json();
-      console.log("[ClassCreditBox] Credit booking response:", data);
+      // Comment out debug logs
+      // console.log("[ClassCreditBox] Credit booking response:", data);
 
       if (data.success) {
         // Show success modal
@@ -302,7 +307,8 @@ const ClassCreditBox: React.FC<ClassCreditBoxProps> = ({
         setError(data.error || "Failed to book class with credit");
       }
     } catch (error) {
-      console.error("[ClassCreditBox] Error using credit:", error);
+      // Comment out debug logs
+      // console.error("[ClassCreditBox] Error using credit:", error);
       setError("Failed to use credit. Please try again.");
     } finally {
       setCreditLoading(false);

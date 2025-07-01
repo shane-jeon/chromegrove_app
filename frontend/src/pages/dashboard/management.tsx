@@ -54,7 +54,7 @@ export default function ManagementDashboard() {
     max_capacity: 20,
     requirements: "",
     recommended_attire: "",
-    recurrence_pattern: "",
+    recurrence_pattern: "weekly",
   });
   const [loading, setLoading] = useState(false);
   const [announcementLoading, setAnnouncementLoading] = useState(false);
@@ -72,7 +72,7 @@ export default function ManagementDashboard() {
       max_capacity: 20,
       requirements: "",
       recommended_attire: "",
-      recurrence_pattern: "",
+      recurrence_pattern: "weekly",
     });
   };
 
@@ -178,7 +178,9 @@ export default function ManagementDashboard() {
         throw new Error(data.error || "Failed to create announcement");
       }
     } catch (error) {
-      throw error;
+      // Comment out debug logs
+      // console.error("Error canceling class:", error);
+      alert("Error canceling class. Please try again.");
     } finally {
       setAnnouncementLoading(false);
     }
@@ -225,7 +227,8 @@ export default function ManagementDashboard() {
         alert(`Failed to cancel class: ${data.error}`);
       }
     } catch (error) {
-      console.error("Error canceling class:", error);
+      // Comment out debug logs
+      // console.error("Error canceling class:", error);
       alert("Error canceling class. Please try again.");
     } finally {
       setDeleteLoading(false);

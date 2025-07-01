@@ -200,17 +200,17 @@ const MembershipBox: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      console.log(
-        "[MembershipBox] Fetching membership status for user:",
-        user.id,
-      );
+      // console.log(
+      //   "[MembershipBox] Fetching membership status for user:",
+      //   user.id,
+      // );
       const res = await fetch("http://localhost:5000/api/membership/status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ clerk_user_id: user.id }),
       });
 
-      console.log("[MembershipBox] Response status:", res.status);
+      // console.log("[MembershipBox] Response status:", res.status);
 
       // Check if response is JSON
       const contentType = res.headers.get("content-type");
@@ -221,7 +221,7 @@ const MembershipBox: React.FC = () => {
       }
 
       const data = await res.json();
-      console.log("[MembershipBox] Response data:", data);
+      // console.log("[MembershipBox] Response data:", data);
 
       if (data.success) {
         setStatus(data.membership);
@@ -229,7 +229,7 @@ const MembershipBox: React.FC = () => {
         setError(data.error || "Failed to fetch membership status");
       }
     } catch (err) {
-      console.error("[MembershipBox] Fetch error:", err);
+      // console.error("[MembershipBox] Fetch error:", err);
       if (err instanceof Error && err.message.includes("Backend server")) {
         setError(err.message);
       } else {
@@ -249,20 +249,20 @@ const MembershipBox: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      console.log(
-        "[MembershipBox] Starting membership purchase for user:",
-        user.id,
-      );
+      // console.log(
+      //   "[MembershipBox] Starting membership purchase for user:",
+      //   user.id,
+      // );
       const optRes = await fetch(
         "http://localhost:5000/api/membership/options",
       );
       const optData = await optRes.json();
-      console.log("[MembershipBox] Membership options (raw):", optData);
+      // console.log("[MembershipBox] Membership options (raw):", optData);
       if (optData.options) {
         optData.options.forEach((o: MembershipOption, idx: number) => {
-          console.log(
-            `[MembershipBox] Option #${idx}: tier_name='${o.tier_name}', price_min=${o.price_min}, price_max=${o.price_max}, stripe_price_id=${o.stripe_price_id}, category=${o.category}`,
-          );
+          // console.log(
+          //   `[MembershipBox] Option #${idx}: tier_name='${o.tier_name}', price_min=${o.price_min}, price_max=${o.price_max}, stripe_price_id=${o.stripe_price_id}, category=${o.category}`,
+          // );
         });
       }
       if (!optData.success || !optData.options?.length)
@@ -271,7 +271,7 @@ const MembershipBox: React.FC = () => {
       setShowPurchaseModal(true);
       setSelectedOption(null);
     } catch (err: unknown) {
-      console.error("[MembershipBox] Purchase error:", err);
+      // console.error("[MembershipBox] Purchase error:", err);
       if (err instanceof Error)
         setError(err.message || "Failed to start membership purchase");
       else setError("Failed to start membership purchase");
@@ -294,7 +294,7 @@ const MembershipBox: React.FC = () => {
         }),
       });
       const data = await res.json();
-      console.log("[MembershipBox] Create membership response:", data);
+      // console.log("[MembershipBox] Create membership response:", data);
       if (data.success && data.url) {
         setPurchaseUrl(data.url);
         setShowPurchaseModal(false);
@@ -304,7 +304,7 @@ const MembershipBox: React.FC = () => {
         throw new Error(data.error || "Failed to start membership purchase");
       }
     } catch (err: unknown) {
-      console.error("[MembershipBox] Confirm purchase error:", err);
+      // console.error("[MembershipBox] Confirm purchase error:", err);
       if (err instanceof Error)
         setError(err.message || "Failed to start membership purchase");
       else setError("Failed to start membership purchase");
@@ -322,7 +322,7 @@ const MembershipBox: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      console.log("[MembershipBox] Cancelling membership for user:", user.id);
+      // console.log("[MembershipBox] Cancelling membership for user:", user.id);
       const res = await fetch("http://localhost:5000/api/membership/cancel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -330,7 +330,7 @@ const MembershipBox: React.FC = () => {
       });
 
       const data = await res.json();
-      console.log("[MembershipBox] Cancel membership response:", data);
+      // console.log("[MembershipBox] Cancel membership response:", data);
 
       if (data.success) {
         setCancelDetails(data.details);
@@ -341,7 +341,7 @@ const MembershipBox: React.FC = () => {
         throw new Error(data.error || "Failed to cancel membership");
       }
     } catch (err: unknown) {
-      console.error("[MembershipBox] Cancel error:", err);
+      // console.error("[MembershipBox] Cancel error:", err);
       if (err instanceof Error)
         setError(err.message || "Failed to cancel membership");
       else setError("Failed to cancel membership");

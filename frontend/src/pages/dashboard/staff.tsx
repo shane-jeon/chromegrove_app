@@ -429,11 +429,13 @@ export default function StaffDashboard() {
       if (data.success) {
         setAssignedClasses(data.classes || []);
       } else {
-        console.error("Failed to fetch assigned classes:", data.error);
+        // Comment out debug logs
+        // console.error("Failed to fetch assigned classes:", data.error);
         setAssignedClasses([]);
       }
     } catch (error) {
-      console.error("Error fetching assigned classes:", error);
+      // Comment out debug logs
+      // console.error("Error fetching assigned classes:", error);
       setAssignedClasses([]);
     } finally {
       setLoading(false);
@@ -450,10 +452,12 @@ export default function StaffDashboard() {
       if (data.success) {
         setAnnouncements(data.announcements);
       } else {
-        console.error("Failed to fetch announcements:", data.error);
+        // Comment out debug logs
+        // console.error("Failed to fetch announcements:", data.error);
       }
     } catch (error) {
-      console.error("Error fetching announcements:", error);
+      // Comment out debug logs
+      // console.error("Error fetching announcements:", error);
     }
   };
 
@@ -602,7 +606,8 @@ export default function StaffDashboard() {
         setPastClasses(past);
       }
     } catch (error) {
-      console.error("Error fetching schedule data:", error);
+      // Comment out debug logs
+      // console.error("Error fetching schedule data:", error);
     }
   };
 
@@ -656,7 +661,8 @@ export default function StaffDashboard() {
         alert(`Failed to mark attendance: ${data.error}`);
       }
     } catch (error) {
-      console.error("Error marking attendance:", error);
+      // Comment out debug logs
+      // console.error("Error marking attendance:", error);
       alert("Error marking attendance. Please try again.");
     } finally {
       setAttendanceLoading((prev) => {
@@ -725,7 +731,8 @@ export default function StaffDashboard() {
         alert(`Failed to book class: ${data.error}`);
       }
     } catch (error) {
-      console.error("Error booking class:", error);
+      // Comment out debug logs
+      // console.error("Error booking class:", error);
       alert("Error booking class. Please try again.");
     } finally {
       setBookingLoading(false);
@@ -782,7 +789,8 @@ export default function StaffDashboard() {
         alert(`Failed to cancel class: ${data.error}`);
       }
     } catch (error) {
-      console.error("Error cancelling class:", error);
+      // Comment out debug logs
+      // console.error("Error cancelling class:", error);
       alert("Error cancelling class. Please try again.");
     } finally {
       setBookingLoading(false);

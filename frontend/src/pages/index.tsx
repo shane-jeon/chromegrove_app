@@ -31,11 +31,12 @@ export default function Home() {
       .then((data) => {
         setClasses(data.classes || []);
         setLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error fetching classes:", error);
-        setLoading(false);
       });
+    // Comment out debug logs
+    // .catch((error) => {
+    //   console.error("Error fetching classes:", error);
+    //   setLoading(false);
+    // });
   }, []);
 
   const formatClassDate = (startTime: string): string => {

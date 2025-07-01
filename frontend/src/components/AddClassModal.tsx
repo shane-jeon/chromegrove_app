@@ -279,17 +279,23 @@ const AddClassModal: React.FC<AddClassModalProps> = ({
   // Parse current start_time to initialize form
   React.useEffect(() => {
     if (form.start_time) {
-      const dateTime = new Date(form.start_time);
-      setSelectedDate(dateTime.toISOString().split("T")[0]);
+      // Use string split to get local date
+      const [datePart, timePart] = form.start_time.split("T");
+      setSelectedDate(datePart);
 
-      const hours = dateTime.getHours();
-      const minutes = dateTime.getMinutes();
-
-      // Convert to 12-hour format
-      const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-      setSelectedHour(displayHour.toString().padStart(2, "0"));
-      setSelectedMinute(minutes.toString().padStart(2, "0"));
-      setSelectedPeriod(hours >= 12 ? "PM" : "AM");
+      let hours = 12;
+      let minutes = 0;
+      let period = "AM";
+      if (timePart) {
+        const [h, m] = timePart.split(":");
+        hours = parseInt(h, 10);
+        minutes = parseInt(m, 10);
+        period = hours >= 12 ? "PM" : "AM";
+        const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+        setSelectedHour(displayHour.toString().padStart(2, "0"));
+        setSelectedMinute(minutes.toString().padStart(2, "0"));
+        setSelectedPeriod(period);
+      }
     } else {
       // Initialize with today's date if no start_time
       const today = new Date();
@@ -367,6 +373,45 @@ const AddClassModal: React.FC<AddClassModalProps> = ({
     onSubmit(e);
   };
 
+  // Reset pickers to default when modal is closed
+  useEffect(() => {
+    if (!show) {
+      setSelectedDate("");
+      setSelectedHour("12");
+      setSelectedMinute("00");
+      setSelectedPeriod("PM");
+    }
+  }, [show]);
+
+  // Handle date change
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedDate(e.target.value);
+    updateStartTime(
+      e.target.value,
+      selectedHour,
+      selectedMinute,
+      selectedPeriod,
+    );
+  };
+
+  // Handle hour change
+  const handleHourChange = (hour: string) => {
+    setSelectedHour(hour);
+    updateStartTime(selectedDate, hour, selectedMinute, selectedPeriod);
+  };
+
+  // Handle minute change
+  const handleMinuteChange = (minute: string) => {
+    setSelectedMinute(minute);
+    updateStartTime(selectedDate, selectedHour, minute, selectedPeriod);
+  };
+
+  // Handle period change
+  const handlePeriodChange = (period: string) => {
+    setSelectedPeriod(period);
+    updateStartTime(selectedDate, selectedHour, selectedMinute, period);
+  };
+
   if (!show) return null;
 
   return (
@@ -413,6 +458,7 @@ const AddClassModal: React.FC<AddClassModalProps> = ({
                 placeholder="Select Date"
                 required
                 style={{ cursor: "pointer" }}
+                onChange={handleDateChange}
               />
               {showDatePicker && (
                 <div
@@ -453,7 +499,7 @@ const AddClassModal: React.FC<AddClassModalProps> = ({
                   <Input
                     type="date"
                     value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
+                    onChange={handleDateChange}
                     style={{ marginBottom: "12px" }}
                   />
                   <Button type="button" onClick={handleDateSave}>
@@ -531,7 +577,7 @@ const AddClassModal: React.FC<AddClassModalProps> = ({
                           <button
                             key={hour}
                             type="button"
-                            onClick={() => setSelectedHour(hour)}
+                            onClick={() => handleHourChange(hour)}
                             style={{
                               display: "block",
                               width: "100%",
@@ -566,7 +612,7 @@ const AddClassModal: React.FC<AddClassModalProps> = ({
                           <button
                             key={minute}
                             type="button"
-                            onClick={() => setSelectedMinute(minute)}
+                            onClick={() => handleMinuteChange(minute)}
                             style={{
                               display: "block",
                               width: "100%",
@@ -601,7 +647,7 @@ const AddClassModal: React.FC<AddClassModalProps> = ({
                           <button
                             key={period}
                             type="button"
-                            onClick={() => setSelectedPeriod(period)}
+                            onClick={() => handlePeriodChange(period)}
                             style={{
                               display: "block",
                               width: "100%",
@@ -680,7 +726,7 @@ const AddClassModal: React.FC<AddClassModalProps> = ({
               <Label>Recurrence *</Label>
               <Select
                 name="recurrence_pattern"
-                value={form.recurrence_pattern}
+                value={form.recurrence_pattern || "weekly"}
                 onChange={handleSelectChange}
                 required>
                 <option value="">Select Recurrence</option>
