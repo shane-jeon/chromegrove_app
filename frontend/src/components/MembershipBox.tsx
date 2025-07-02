@@ -102,11 +102,11 @@ const ModalOverlay = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 3000;
 `;
 
 const ModalContent = styled.div`
@@ -114,9 +114,11 @@ const ModalContent = styled.div`
   border-radius: 12px;
   padding: 32px;
   max-width: 400px;
-  width: 100%;
+  width: 90vw;
+  max-height: 90vh;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
   text-align: center;
+  overflow-y: auto;
 `;
 
 const ModalTitle = styled.h3`
@@ -259,11 +261,7 @@ const MembershipBox: React.FC = () => {
       const optData = await optRes.json();
       // console.log("[MembershipBox] Membership options (raw):", optData);
       if (optData.options) {
-        optData.options.forEach((o: MembershipOption, idx: number) => {
-          // console.log(
-          //   `[MembershipBox] Option #${idx}: tier_name='${o.tier_name}', price_min=${o.price_min}, price_max=${o.price_max}, stripe_price_id=${o.stripe_price_id}, category=${o.category}`,
-          // );
-        });
+        // Remove unused forEach loop
       }
       if (!optData.success || !optData.options?.length)
         throw new Error("No membership options available");

@@ -1,6 +1,6 @@
 # Chrome Grove - Dance Studio Management System
 
-Chrome Grove is a full-stack web application built as a part of my Object Oriented Analysis & Design project, which is also designed to support a nonprofit dance studio that’s currently in the works—a project led by friends whose mission I truly believe in. The app helps lay the foundation for running the studio smoothly, from class scheduling and student sign-ups to tracking attendance, handling payments, and managing memberships. The goal is to make sure the tech side is taken care of, so the studio can stay focused on building an inclusive space for movement and community.
+Chrome Grove is a full-stack web application built as a part of my Object Oriented Analysis & Design project, which is also designed to support a nonprofit dance studio that's currently in the works—a project led by friends whose mission I truly believe in. The app helps lay the foundation for running the studio smoothly, from class scheduling and student sign-ups to tracking attendance, handling payments, and managing memberships. The goal is to make sure the tech side is taken care of, so the studio can stay focused on building an inclusive space for movement and community.
 
 ## Features
 
