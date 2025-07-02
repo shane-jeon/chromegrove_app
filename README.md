@@ -1,15 +1,15 @@
 # Chrome Grove - Dance Studio Management System
 
-Chrome Grove is a web application for managing dance studio operations, including class scheduling, student enrollment, attendance tracking, payment processing, and membership management.
+Chrome Grove is a full-stack web application built as a part of my Object Oriented Analysis & Design project, which is also designed to support a nonprofit dance studio that’s currently in the works—a project led by friends whose mission I truly believe in. The app helps lay the foundation for running the studio smoothly, from class scheduling and student sign-ups to tracking attendance, handling payments, and managing memberships. The goal is to make sure the tech side is taken care of, so the studio can stay focused on building an inclusive space for movement and community.
 
 ## Features
 
-- Multi-role user system: Students, Staff, and Management
-- Class management: create, schedule, and manage classes
-- Student enrollment and attendance tracking
-- Payment processing with Stripe
-- Credit system for class cancellations and makeups
-- Announcements for studio communication
+- Rose-based access for Students, Staff, and Management
+- Tools for creating, scheduling, and managing classes
+- Easy student sign-ups (through Clerk) and attendance tracking
+- Secure payment processing with Stripe
+- Credit system for handling class cancellations and makeups
+- Announcement board for studio-wide updates and communication
 
 ## Technology Stack
 
@@ -123,8 +123,53 @@ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your-clerk-publishable-key
 
 ## Use of Generative AI
 
-Generative AI tools were utilized during the development of this project as an aid to assist in specific technical areas, including:
+I used generative AI as a supportive tool throughout the project--mainly to get quick feedback or second opinions on certain tasks, like:
 
-- Ensuring adherence to GRASP (General Responsibility Assignment Software Patterns) principles in code structure and design decisions.
-- Providing guidance and suggestions for CSS styling and user interface improvements.
-- Assisting in revising project documentation to ensure technical accuracy and clarity.
+- Double-checking that my code structure followed GRASP principles
+- Getting styling tips and UI suggestions to improve the frontend experience
+- Helping refine documentation to make sure everything was clear and technically accurate
+
+All use cases (brief and full dressed) and Architecture, UML, & Sequence Diagrams were developed by myself.
+
+## API Documentation
+
+The backend serves a RESTful API handling everything from users and classes to payments and memberships. Endpoints are grouped under /api/, with the server running on port 5000 by default.
+
+| Endpoint                                | Method | Description                                 |
+| --------------------------------------- | ------ | ------------------------------------------- |
+| `/api/ping`                             | GET    | Health check (returns `pong`)               |
+| `/api/users/create`                     | POST   | Create a new user                           |
+| `/api/users/by-clerk-id`                | GET    | Get user by Clerk ID                        |
+| `/api/users`                            | GET    | Get all users                               |
+| `/api/instructors/search`               | GET    | Search for instructors                      |
+| `/api/studio-classes/create`            | POST   | Create a new class instance                 |
+| `/api/studio-classes/list`              | GET    | List all upcoming class instances           |
+| `/api/studio-classes/templates`         | GET    | List all class templates                    |
+| `/api/studio-classes/book`              | POST   | Book a class as a student                   |
+| `/api/studio-classes/book-staff`        | POST   | Book a class as a staff member              |
+| `/api/studio-classes/check-eligibility` | POST   | Check if a user is eligible to book a class |
+| `/api/students/enrolled-classes`        | GET    | Get classes a student is enrolled in        |
+| `/api/students/cancel-enrollment`       | POST   | Cancel a student's enrollment               |
+| `/api/staff/cancel-booking`             | POST   | Cancel a staff member's booking             |
+| `/api/studio-classes/<id>/staff`        | GET    | Get staff assigned to a class               |
+| `/api/studio-classes/<id>/staff`        | POST   | Assign staff to a class                     |
+| `/api/studio-classes/<id>/staff/<id>`   | DELETE | Remove staff from a class                   |
+| `/api/studio-classes/<id>/instructor`   | PUT    | Change the instructor for a class           |
+| `/api/studio-classes/cancel`            | POST   | Cancel a class instance                     |
+| `/api/studio-classes/book-with-credit`  | POST   | Book a class using credits                  |
+| `/api/staff/assigned-classes`           | GET    | Get classes assigned to a staff member      |
+| `/api/staff/booked-classes`             | GET    | Get classes booked by a staff member        |
+| `/api/attendance/mark`                  | POST   | Mark attendance for a student               |
+| `/api/attendance/roster/<instance_id>`  | GET    | Get the roster for a class instance         |
+| `/api/sliding-scale-options`            | GET    | Get sliding scale payment options           |
+| `/api/sliding-scale-options/all`        | GET    | Get all sliding scale options               |
+| `/api/sliding-scale-options`            | POST   | Create a new sliding scale option           |
+| `/api/membership/status`                | POST   | Get a user's membership status              |
+| `/api/membership/create`                | POST   | Create a new membership                     |
+| `/api/membership/cancel`                | POST   | Cancel a membership                         |
+| `/api/membership/options`               | GET    | Get available membership options            |
+| `/api/announcements`                    | GET    | Get announcements for bulletin boards       |
+| `/api/announcements`                    | POST   | Create a new announcement                   |
+| `/api/credits/student`                  | GET    | Get a student's available credits           |
+| `/api/credits/history`                  | GET    | Get a student's credit usage history        |
+| `/api/credits/use`                      | POST   | Use a credit to book a class                |
