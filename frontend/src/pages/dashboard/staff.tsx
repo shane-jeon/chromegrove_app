@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import styled from "styled-components";
 import { useUser } from "@clerk/nextjs";
 import DashboardScheduleTabs from "../../components/DashboardScheduleTabs";
 import StaffBookingModal from "../../components/StaffBookingModal";
@@ -7,6 +6,33 @@ import BulletinBoard, {
   type AnnouncementItem,
 } from "../../components/BulletinBoard";
 import LoadingSpinner from "../../components/LoadingSpinner";
+import {
+  DashboardContainer,
+  LeftSideContainer,
+  RightSideContainer,
+  AssignedClassesBox,
+  AssignedClassesHeader,
+  AssignedClassesContent,
+  BoxTitle,
+  ClassCard,
+  ClassHeader,
+  ClassInfo,
+  ClassName,
+  ClassDetails,
+  InstructorBadge,
+  ExpandButton,
+  StudentRoster,
+  StudentItem,
+  StudentInfo,
+  StudentName,
+  StudentEmail,
+  AttendanceButtons,
+  AttendanceButton,
+  AttendanceStatus,
+  CheckedInStudent,
+  CheckInUnavailable,
+  EmptyState,
+} from "../../styles/StaffDashboardStyles";
 
 interface AssignedClass {
   instance_id: string;
@@ -48,296 +74,6 @@ interface ClassItem {
   payment_type?: string;
   is_instructing?: boolean;
 }
-
-// Main Layout
-const DashboardContainer = styled.div`
-  display: flex;
-  gap: 24px;
-  padding: 24px;
-  max-width: 1400px;
-  margin: 0 auto;
-  min-height: 100vh;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    padding: 16px;
-  }
-`;
-
-// Left Side - Assigned Classes + Schedule (70%)
-const LeftSideContainer = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  min-width: 0;
-
-  @media (max-width: 768px) {
-    flex: 1;
-  }
-`;
-
-// Right Side - Announcements
-const RightSideContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  flex: 0 0 320px;
-  min-width: 0;
-
-  @media (max-width: 768px) {
-    flex: 1;
-  }
-`;
-
-// Assigned Classes Box
-const AssignedClassesBox = styled.div`
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  height: 500px;
-
-  @media (max-width: 768px) {
-    height: 450px;
-  }
-
-  @media (max-width: 480px) {
-    height: 400px;
-  }
-`;
-
-const AssignedClassesHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  flex-shrink: 0;
-`;
-
-const AssignedClassesContent = styled.div`
-  flex: 1;
-  overflow-y: auto;
-  padding-right: 8px;
-
-  /* Custom scrollbar styling */
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: #f1f3f4;
-    border-radius: 4px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: #cbd5e0;
-    border-radius: 4px;
-
-    &:hover {
-      background: #a0aec0;
-    }
-  }
-`;
-
-const BoxTitle = styled.h2`
-  font-size: 20px;
-  font-weight: 700;
-  color: #2d3748;
-  margin: 0;
-`;
-
-const ClassCard = styled.div`
-  background: #f8f9fa;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
-  border-left: 4px solid #805ad5;
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-`;
-
-const ClassHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 12px;
-`;
-
-const ClassInfo = styled.div`
-  flex: 1;
-`;
-
-const ClassName = styled.h3`
-  font-size: 16px;
-  font-weight: 600;
-  color: #2d3748;
-  margin: 0 0 4px 0;
-`;
-
-const ClassDetails = styled.div`
-  font-size: 14px;
-  color: #4a5568;
-  margin-bottom: 4px;
-`;
-
-const InstructorBadge = styled.span`
-  background: #805ad5;
-  color: white;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-  margin-left: 8px;
-`;
-
-const ExpandButton = styled.button`
-  background: none;
-  border: none;
-  color: #805ad5;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-
-  &:hover {
-    background: #f7fafc;
-  }
-`;
-
-const StudentRoster = styled.div`
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #e2e8f0;
-`;
-
-const StudentItem = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #f1f3f4;
-
-  &:last-child {
-    border-bottom: none;
-  }
-`;
-
-const StudentInfo = styled.div`
-  flex: 1;
-`;
-
-const StudentName = styled.div`
-  font-size: 14px;
-  font-weight: 600;
-  color: #2d3748;
-`;
-
-const StudentEmail = styled.div`
-  font-size: 12px;
-  color: #718096;
-`;
-
-const AttendanceButtons = styled.div`
-  display: flex;
-  gap: 8px;
-`;
-
-const AttendanceButton = styled.button<{
-  variant: "checkin" | "noshow";
-  disabled?: boolean;
-}>`
-  padding: 6px 12px;
-  border: none;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: ${({ disabled }) => (disabled ? "not-allowed" : "pointer")};
-  opacity: ${({ disabled }) => (disabled ? 0.5 : 1)};
-  transition: all 0.2s;
-
-  ${({ variant }) =>
-    variant === "checkin"
-      ? `
-        background: #48bb78;
-        color: white;
-        &:hover:not(:disabled) {
-          background: #38a169;
-        }
-      `
-      : `
-        background: #f56565;
-        color: white;
-        &:hover:not(:disabled) {
-          background: #e53e3e;
-        }
-      `}
-`;
-
-const AttendanceStatus = styled.div<{ status: string }>`
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 4px;
-  ${({ status }) =>
-    status === "attended"
-      ? `
-        background: #c6f6d5;
-        color: #22543d;
-      `
-      : status === "missed"
-      ? `
-        background: #fed7d7;
-        color: #742a2a;
-      `
-      : `
-        background: #e2e8f0;
-        color: #4a5568;
-      `}
-`;
-
-const CheckedInStudent = styled(StudentItem)`
-  opacity: 0.6;
-  color: #718096;
-
-  ${StudentName} {
-    color: #718096 !important;
-  }
-
-  ${StudentEmail} {
-    color: #a0aec0 !important;
-  }
-`;
-
-const CheckInUnavailable = styled.div`
-  font-size: 12px;
-  color: #a0aec0;
-  font-style: italic;
-  padding: 4px 8px;
-`;
-
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 40px;
-  color: #718096;
-
-  h3 {
-    margin: 0 0 8px 0;
-    font-size: 18px;
-    font-weight: 600;
-  }
-
-  p {
-    margin: 0;
-    font-size: 14px;
-  }
-`;
 
 // Utility functions
 function formatClassDate(startTime: string): string {
@@ -408,6 +144,8 @@ export default function StaffDashboard() {
     subMessage?: string;
   } | null>(null);
 
+  const [showTeachingAlert, setShowTeachingAlert] = useState(false);
+
   useEffect(() => {
     if (user) {
       const loadData = async () => {
@@ -433,9 +171,7 @@ export default function StaffDashboard() {
         // console.error("Failed to fetch assigned classes:", data.error);
         setAssignedClasses([]);
       }
-    } catch (error) {
-      // Comment out debug logs
-      // console.error("Error fetching assigned classes:", error);
+    } catch {
       setAssignedClasses([]);
     } finally {
       setLoading(false);
@@ -455,9 +191,8 @@ export default function StaffDashboard() {
         // Comment out debug logs
         // console.error("Failed to fetch announcements:", data.error);
       }
-    } catch (error) {
+    } catch {
       // Comment out debug logs
-      // console.error("Error fetching announcements:", error);
     }
   };
 
@@ -605,9 +340,8 @@ export default function StaffDashboard() {
         setUpcomingClasses(upcoming);
         setPastClasses(past);
       }
-    } catch (error) {
+    } catch {
       // Comment out debug logs
-      // console.error("Error fetching schedule data:", error);
     }
   };
 
@@ -660,9 +394,7 @@ export default function StaffDashboard() {
       } else {
         alert(`Failed to mark attendance: ${data.error}`);
       }
-    } catch (error) {
-      // Comment out debug logs
-      // console.error("Error marking attendance:", error);
+    } catch {
       alert("Error marking attendance. Please try again.");
     } finally {
       setAttendanceLoading((prev) => {
@@ -676,10 +408,9 @@ export default function StaffDashboard() {
   const handleBookClass = (classItem: ClassItem) => {
     // Don't allow booking if staff is instructing this class
     if (classItem.is_instructing) {
-      alert("You cannot book a class you are instructing.");
+      setShowTeachingAlert(true);
       return;
     }
-
     setSelectedClass(classItem);
     setIsCancellation(false);
     setShowBookingModal(true);
@@ -730,9 +461,7 @@ export default function StaffDashboard() {
       } else {
         alert(`Failed to book class: ${data.error}`);
       }
-    } catch (error) {
-      // Comment out debug logs
-      // console.error("Error booking class:", error);
+    } catch {
       alert("Error booking class. Please try again.");
     } finally {
       setBookingLoading(false);
@@ -788,9 +517,7 @@ export default function StaffDashboard() {
       } else {
         alert(`Failed to cancel class: ${data.error}`);
       }
-    } catch (error) {
-      // Comment out debug logs
-      // console.error("Error cancelling class:", error);
+    } catch {
       alert("Error cancelling class. Please try again.");
     } finally {
       setBookingLoading(false);
@@ -799,11 +526,9 @@ export default function StaffDashboard() {
 
   if (loading) {
     return (
-      <DashboardContainer>
-        <div style={{ textAlign: "center", width: "100%" }}>
-          <LoadingSpinner text="Loading staff dashboard..." size="medium" />
-        </div>
-      </DashboardContainer>
+      <div style={{ textAlign: "center", width: "100%" }}>
+        <LoadingSpinner text="Loading staff dashboard..." size="medium" />
+      </div>
     );
   }
 
@@ -814,20 +539,7 @@ export default function StaffDashboard() {
         <AssignedClassesBox>
           <AssignedClassesHeader>
             <BoxTitle>Your Upcoming Classes</BoxTitle>
-            <button
-              onClick={fetchAssignedClasses}
-              style={{
-                padding: "8px 16px",
-                backgroundColor: "#805ad5",
-                color: "white",
-                border: "none",
-                borderRadius: "6px",
-                fontSize: "14px",
-                cursor: "pointer",
-                fontWeight: "500",
-              }}>
-              Refresh
-            </button>
+            <button onClick={fetchAssignedClasses}>Refresh</button>
           </AssignedClassesHeader>
           <AssignedClassesContent>
             {assignedClasses.length === 0 ? (
@@ -866,7 +578,6 @@ export default function StaffDashboard() {
                       Roster
                     </ExpandButton>
                   </ClassHeader>
-
                   {expandedClasses.has(classItem.instance_id) && (
                     <StudentRoster>
                       {classItem.students.length === 0 ? (
@@ -884,13 +595,27 @@ export default function StaffDashboard() {
                           const isCheckedIn =
                             student.status === "attended" ||
                             student.status === "missed";
-
-                          const StudentComponent = isCheckedIn
-                            ? CheckedInStudent
-                            : StudentItem;
-
-                          return (
-                            <StudentComponent key={student.enrollment_id}>
+                          return isCheckedIn ? (
+                            <CheckedInStudent key={student.enrollment_id}>
+                              <StudentInfo>
+                                <StudentName>{student.name}</StudentName>
+                                <StudentEmail>{student.email}</StudentEmail>
+                              </StudentInfo>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "8px",
+                                }}>
+                                <AttendanceStatus status={student.status}>
+                                  {student.status === "attended"
+                                    ? "Checked In"
+                                    : "Missed"}
+                                </AttendanceStatus>
+                              </div>
+                            </CheckedInStudent>
+                          ) : (
+                            <StudentItem key={student.enrollment_id}>
                               <StudentInfo>
                                 <StudentName>{student.name}</StudentName>
                                 <StudentEmail>{student.email}</StudentEmail>
@@ -946,15 +671,9 @@ export default function StaffDashboard() {
                                       Check-in not yet available
                                     </CheckInUnavailable>
                                   )
-                                ) : (
-                                  <AttendanceStatus status={student.status}>
-                                    {student.status === "attended"
-                                      ? "Checked In"
-                                      : "Missed"}
-                                  </AttendanceStatus>
-                                )}
+                                ) : null}
                               </div>
-                            </StudentComponent>
+                            </StudentItem>
                           );
                         })
                       )}
@@ -965,7 +684,6 @@ export default function StaffDashboard() {
             )}
           </AssignedClassesContent>
         </AssignedClassesBox>
-
         {/* Class Schedule Box */}
         <div
           style={{
@@ -986,16 +704,13 @@ export default function StaffDashboard() {
           />
         </div>
       </LeftSideContainer>
-
       <RightSideContainer>
         {/* Studio Announcements Box */}
         <BulletinBoard
           announcements={announcements}
-          title="Studio Announcements"
           showStaffIndicators={true}
         />
       </RightSideContainer>
-
       {/* Staff Booking Modal */}
       <StaffBookingModal
         show={showBookingModal}
@@ -1010,7 +725,6 @@ export default function StaffDashboard() {
         loading={bookingLoading}
         isCancellation={isCancellation}
       />
-
       {/* Success Modal */}
       {showSuccessModal && (
         <div
@@ -1035,14 +749,56 @@ export default function StaffDashboard() {
             }}>
             <h2>{successModalContent?.title}</h2>
             <p>{successModalContent?.message}</p>
-            {successModalContent?.subMessage && (
-              <p>{successModalContent.subMessage}</p>
-            )}
             <button
               onClick={() => {
                 setShowSuccessModal(false);
                 setSuccessModalContent(null);
               }}
+              style={{
+                padding: "8px 16px",
+                backgroundColor: "#805ad5",
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                fontSize: "14px",
+                cursor: "pointer",
+                fontWeight: "500",
+              }}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Teaching Alert Modal */}
+      {showTeachingAlert && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000,
+          }}>
+          <div
+            style={{
+              backgroundColor: "white",
+              padding: "24px",
+              borderRadius: "8px",
+              maxWidth: "400px",
+              textAlign: "center",
+            }}>
+            <h2>Cannot Book Class</h2>
+            <p>
+              You are the instructor for this class and cannot book it as a
+              staff member.
+            </p>
+            <button
+              onClick={() => setShowTeachingAlert(false)}
               style={{
                 padding: "8px 16px",
                 backgroundColor: "#805ad5",

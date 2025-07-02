@@ -132,8 +132,11 @@ const ClassScheduleList: React.FC<ClassScheduleListProps> = ({
                   )}
                 </div>
               ) : classItem.is_instructing ? (
-                <button className="book-button disabled" disabled>
-                  Instructing
+                <button
+                  className="book-button disabled"
+                  disabled
+                  aria-label="You are teaching this class">
+                  Teaching this class
                 </button>
               ) : isFull ? (
                 <button className="book-button disabled" disabled>

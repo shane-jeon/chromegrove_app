@@ -10,6 +10,22 @@ import BulletinBoard, {
 } from "../../components/BulletinBoard";
 import Schedule from "../../components/Schedule";
 import DeleteClassModal from "../../components/DeleteClassModal";
+import {
+  DashboardContainer,
+  MainContent,
+  Title,
+  FlexRow,
+  LeftColumn,
+  RightColumn,
+  ButtonGroup,
+  ActionButton,
+  DropdownPanel,
+  DropdownHeader,
+  InstructorList,
+  InstructorItem,
+  InstructorName,
+  InstructorEmail,
+} from "./ManagementDashboardStyles";
 
 interface StudioClass {
   id?: number;
@@ -177,9 +193,7 @@ export default function ManagementDashboard() {
       } else {
         throw new Error(data.error || "Failed to create announcement");
       }
-    } catch (error) {
-      // Comment out debug logs
-      // console.error("Error canceling class:", error);
+    } catch {
       alert("Error canceling class. Please try again.");
     } finally {
       setAnnouncementLoading(false);
@@ -226,9 +240,7 @@ export default function ManagementDashboard() {
       } else {
         alert(`Failed to cancel class: ${data.error}`);
       }
-    } catch (error) {
-      // Comment out debug logs
-      // console.error("Error canceling class:", error);
+    } catch {
       alert("Error canceling class. Please try again.");
     } finally {
       setDeleteLoading(false);
@@ -236,79 +248,34 @@ export default function ManagementDashboard() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center bg-gray-50 px-4 py-10">
-      <div className="mx-auto w-full max-w-6xl">
-        <h1 className="mb-8 text-center text-3xl font-bold text-purple-700">
-          Management Dashboard
-        </h1>
-        <div
-          className="flex flex-row items-stretch justify-center gap-8"
-          style={{ minHeight: "500px" }}>
+    <DashboardContainer>
+      <MainContent>
+        <Title>Management Dashboard</Title>
+        <FlexRow>
           {/* Left Column: Schedule */}
-          <div className="flex flex-1 flex-col items-center justify-center">
+          <LeftColumn>
             <Schedule
               classes={classes}
               role="management"
               onDeleteClass={handleDeleteClass}
             />
-          </div>
+          </LeftColumn>
           {/* Right Column: Management Controls + Bulletin Board */}
-          <div className="flex flex-1 flex-col items-center justify-start gap-6">
+          <RightColumn>
             {/* Management Controls */}
-            <div className="flex w-full flex-col items-center gap-4">
-              {/* Button Group Container */}
-              <div className="flex w-full flex-wrap items-center justify-center gap-4">
-                <button
-                  className="add-class-btn flex items-center gap-2 rounded-full px-8 py-3 text-lg font-semibold text-white shadow transition"
-                  style={{
-                    background: "#805ad5",
-                    border: "none",
-                    cursor: "pointer",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "#6b46c1";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "#805ad5";
-                  }}
+            <div style={{ width: "100%" }}>
+              <ButtonGroup>
+                <ActionButton
                   onClick={() => setShowAddClassModal(true)}
                   type="button">
                   + Add Class
-                </button>
-
-                {/* Add Announcement Button */}
-                <button
-                  className="add-class-btn flex items-center gap-2 rounded-full px-8 py-3 text-lg font-semibold text-white shadow transition"
-                  style={{
-                    background: "#805ad5",
-                    border: "none",
-                    cursor: "pointer",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "#6b46c1";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "#805ad5";
-                  }}
+                </ActionButton>
+                <ActionButton
                   onClick={() => setShowAnnouncementModal(true)}
                   type="button">
                   📢 Add Announcement
-                </button>
-
-                {/* Instructors Button and Dropdown */}
-                <button
-                  className="add-class-btn flex items-center gap-2 rounded-full px-8 py-3 text-lg font-semibold text-white shadow transition"
-                  style={{
-                    background: "#805ad5",
-                    border: "none",
-                    cursor: "pointer",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "#6b46c1";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "#805ad5";
-                  }}
+                </ActionButton>
+                <ActionButton
                   onClick={async () => {
                     if (!staffList.length) {
                       // Fetch staff if not already loaded
@@ -322,9 +289,8 @@ export default function ManagementDashboard() {
                   }}
                   type="button">
                   Instructors <span className="arrow">▼</span>
-                </button>
-              </div>
-
+                </ActionButton>
+              </ButtonGroup>
               <AddClassModal
                 show={showAddClassModal}
                 onClose={() => {
@@ -338,44 +304,42 @@ export default function ManagementDashboard() {
                 handleSelectChange={handleSelectChange}
                 handleChange={handleChange}
               />
-
               {showInstructors && (
-                <div className="dropdown-form-panel dropdown-form-animate mt-2 w-full max-w-md">
-                  <div className="dropdown-form-header-bar mb-2 font-semibold text-purple-700">
-                    All Instructors
-                  </div>
+                <DropdownPanel>
+                  <DropdownHeader>All Instructors</DropdownHeader>
                   {staffList.length === 0 ? (
-                    <div className="p-4 text-center text-gray-500">
+                    <div
+                      style={{
+                        padding: "16px",
+                        textAlign: "center",
+                        color: "#666",
+                      }}>
                       No instructors found.
                     </div>
                   ) : (
-                    <ul className="divide-y">
+                    <InstructorList>
                       {staffList.map((i) => (
-                        <li key={i.id} className="p-3">
-                          <div className="font-bold text-purple-800">
-                            {i.name}
-                          </div>
-                          <div className="text-sm text-gray-600">{i.email}</div>
-                        </li>
+                        <InstructorItem key={i.id}>
+                          <InstructorName>{i.name}</InstructorName>
+                          <InstructorEmail>{i.email}</InstructorEmail>
+                        </InstructorItem>
                       ))}
-                    </ul>
+                    </InstructorList>
                   )}
-                </div>
+                </DropdownPanel>
               )}
             </div>
-
             {/* Bulletin Board */}
-            <div className="w-full">
+            <div style={{ width: "100%" }}>
               <BulletinBoard
                 announcements={announcements}
                 title="Bulletin Board"
                 showStaffIndicators={true}
               />
             </div>
-          </div>
-        </div>
-      </div>
-
+          </RightColumn>
+        </FlexRow>
+      </MainContent>
       {/* Add Announcement Modal */}
       <AddAnnouncementModal
         show={showAnnouncementModal}
@@ -383,7 +347,6 @@ export default function ManagementDashboard() {
         onSubmit={handleAnnouncementSubmit}
         loading={announcementLoading}
       />
-
       {/* Delete Class Modal */}
       <DeleteClassModal
         show={showDeleteModal}
@@ -395,6 +358,6 @@ export default function ManagementDashboard() {
         classItem={selectedClassForDeletion}
         loading={deleteLoading}
       />
-    </div>
+    </DashboardContainer>
   );
 }
