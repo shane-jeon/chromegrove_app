@@ -261,7 +261,14 @@ const DeleteClassModal: React.FC<DeleteClassModalProps> = ({
   };
 
   const hasRecurrence =
-    classItem.recurrence_pattern && classItem.recurrence_pattern !== "One-time";
+    classItem.recurrence_pattern &&
+    classItem.recurrence_pattern !== "One-time" &&
+    classItem.recurrence_pattern !== "pop-up";
+
+  const isPopUp = classItem.recurrence_pattern === "pop-up";
+  const isOneTime =
+    classItem.recurrence_pattern === "One-time" ||
+    !classItem.recurrence_pattern;
 
   return (
     <ModalOverlay onClick={handleClose}>
@@ -270,9 +277,13 @@ const DeleteClassModal: React.FC<DeleteClassModalProps> = ({
           <CloseButton onClick={handleClose} disabled={loading}>
             ×
           </CloseButton>
-          <ModalTitle>Cancel Class</ModalTitle>
+          <ModalTitle>
+            {isPopUp || isOneTime ? "Delete Class" : "Cancel Class"}
+          </ModalTitle>
           <ModalSubtitle>
-            Choose how you want to cancel this class
+            {isPopUp || isOneTime
+              ? "Are you sure you want to delete this class?"
+              : "Choose how you want to cancel this class"}
           </ModalSubtitle>
         </ModalHeader>
 
@@ -299,9 +310,15 @@ const DeleteClassModal: React.FC<DeleteClassModalProps> = ({
               onChange={() => setSelectedScope("single")}
             />
             <OptionContent>
-              <OptionTitle>Cancel this class only</OptionTitle>
+              <OptionTitle>
+                {isPopUp || isOneTime
+                  ? "Delete this class"
+                  : "Cancel this class only"}
+              </OptionTitle>
               <OptionDescription>
-                Cancel this specific instance of the class
+                {isPopUp || isOneTime
+                  ? "Delete this specific class"
+                  : "Cancel this specific instance of the class"}
               </OptionDescription>
             </OptionContent>
           </OptionLabel>
@@ -331,7 +348,13 @@ const DeleteClassModal: React.FC<DeleteClassModalProps> = ({
             Go Back
           </Button>
           <Button variant="primary" onClick={handleConfirm} disabled={loading}>
-            {loading ? "Canceling..." : "Confirm Cancellation"}
+            {loading
+              ? isPopUp || isOneTime
+                ? "Deleting..."
+                : "Canceling..."
+              : isPopUp || isOneTime
+              ? "Confirm Deletion"
+              : "Confirm Cancellation"}
           </Button>
         </ModalActions>
       </ModalContent>
