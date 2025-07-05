@@ -441,6 +441,25 @@ def create_announcement():
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route('/api/announcements/<int:announcement_id>', methods=['DELETE'])
+def delete_announcement(announcement_id):
+    try:
+        announcement = Announcement.query.get(announcement_id)
+        if not announcement:
+            return jsonify({"success": False, "error": "Announcement not found"}), 404
+        
+        db.session.delete(announcement)
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Announcement deleted successfully"
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
 # Credit routes using CreditController
 @app.route('/api/credits/student', methods=['GET'])
 def get_student_credits():

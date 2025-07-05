@@ -182,6 +182,7 @@ export default function ManagementDashboard() {
       });
 
       const data = await response.json();
+
       if (data.success) {
         // Refresh announcements
         const announcementsRes = await fetch(
@@ -197,6 +198,33 @@ export default function ManagementDashboard() {
       alert("Error canceling class. Please try again.");
     } finally {
       setAnnouncementLoading(false);
+    }
+  };
+
+  const handleDeleteAnnouncement = async (announcementId: number) => {
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/announcements/${announcementId}`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Refresh announcements
+        const announcementsRes = await fetch(
+          "http://localhost:5000/api/announcements?board_types=student,staff,all",
+        );
+        const announcementsData = await announcementsRes.json();
+        setAnnouncements(announcementsData.announcements || []);
+      } else {
+        alert(`Failed to delete announcement: ${data.error}`);
+      }
+    } catch {
+      alert("Error deleting announcement. Please try again.");
     }
   };
 
@@ -335,6 +363,8 @@ export default function ManagementDashboard() {
                 announcements={announcements}
                 title="Bulletin Board"
                 showStaffIndicators={true}
+                showDeleteButtons={true}
+                onDeleteAnnouncement={handleDeleteAnnouncement}
               />
             </div>
           </RightColumn>
