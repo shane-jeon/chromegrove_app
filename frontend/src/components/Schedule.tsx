@@ -1,7 +1,12 @@
 import React, { useState } from "react";
-import Calendar from "react-calendar";
-import "react-calendar/dist/Calendar.css";
+import dynamic from "next/dynamic";
 import ClassScheduleList from "./ClassScheduleList";
+
+// Dynamically import the entire calendar component to avoid SSR issues
+const CalendarView = dynamic(() => import("./CalendarView"), {
+  ssr: false,
+  loading: () => <div>Loading calendar...</div>,
+});
 
 interface ClassItem {
   instance_id: string;
@@ -32,14 +37,6 @@ interface ScheduleProps {
 
 type ViewType = "list" | "calendar";
 
-function isSameDay(date1: Date, date2: Date) {
-  return (
-    date1.getFullYear() === date2.getFullYear() &&
-    date1.getMonth() === date2.getMonth() &&
-    date1.getDate() === date2.getDate()
-  );
-}
-
 const Schedule: React.FC<ScheduleProps> = ({
   classes,
   role,
@@ -47,30 +44,21 @@ const Schedule: React.FC<ScheduleProps> = ({
   onCancelClass,
   onDeleteClass,
 }) => {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [viewType, setViewType] = useState<ViewType>("calendar");
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
-  // Filter classes based on role
-  const getFilteredClasses = () => {
-    if (role === "student") {
-      // For students, show all available classes in list view
-      // and enrolled classes in calendar view
-      return classes;
-    } else {
-      // For management, show all classes
-      return classes;
-    }
-  };
-
-  const filteredClasses = getFilteredClasses();
-
-  // Filtering logic for selected day
-  const classesForSelectedDay = filteredClasses.filter((c) =>
+  // Filtering logic for selected day (for list view)
+  function isSameDay(date1: Date, date2: Date) {
+    return (
+      date1.getFullYear() === date2.getFullYear() &&
+      date1.getMonth() === date2.getMonth() &&
+      date1.getDate() === date2.getDate()
+    );
+  }
+  const classesForSelectedDay = classes.filter((c) =>
     isSameDay(new Date(c.start_time), selectedDate),
   );
-
-  // Sort classes by start time for list view
-  const sortedClasses = [...filteredClasses].sort(
+  const sortedClasses = [...classes].sort(
     (a, b) =>
       new Date(a.start_time).getTime() - new Date(b.start_time).getTime(),
   );
@@ -99,55 +87,16 @@ const Schedule: React.FC<ScheduleProps> = ({
       {/* Content */}
       <div className="schedule-content">
         {viewType === "calendar" ? (
-          <>
-            <Calendar
-              value={selectedDate}
-              onChange={(date) => setSelectedDate(date as Date)}
-              tileClassName={({ date, view }) => {
-                let className = "";
-                if (view === "month") {
-                  if (isSameDay(date, selectedDate)) {
-                    className += "calendar-selected-day ";
-                  }
-                  if (isSameDay(date, new Date())) {
-                    className += "calendar-today ";
-                  }
-                }
-                return className || undefined;
-              }}
-              tileContent={({ date, view }) => {
-                if (
-                  view === "month" &&
-                  filteredClasses.some((c) =>
-                    isSameDay(new Date(c.start_time), date),
-                  )
-                ) {
-                  return <div className="calendar-dot" />;
-                }
-                return null;
-              }}
-              showNeighboringMonth={false}
-              calendarType="gregory"
-              formatShortWeekday={(locale, date) => {
-                const days = ["S", "M", "T", "W", "T", "F", "S"];
-                return days[date.getDay()];
-              }}
-              className="modern-calendar"
-            />
-            <div className="calendar-classes">
-              <h3 className="calendar-classes-title">
-                Classes on {selectedDate.toLocaleDateString()}
-              </h3>
-              <ClassScheduleList
-                classes={classesForSelectedDay}
-                viewType={role}
-                onBookClass={onBookClass}
-                onCancelClass={onCancelClass}
-                onDeleteClass={onDeleteClass}
-                emptyMessage="No classes found for this date."
-              />
-            </div>
-          </>
+          <CalendarView
+            classes={classes}
+            selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
+            classesForSelectedDay={classesForSelectedDay}
+            role={role}
+            onBookClass={onBookClass}
+            onCancelClass={onCancelClass}
+            onDeleteClass={onDeleteClass}
+          />
         ) : (
           <div className="list-view">
             <h3 className="list-view-title">
