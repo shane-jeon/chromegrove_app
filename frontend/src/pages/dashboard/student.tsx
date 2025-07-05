@@ -118,9 +118,8 @@ type TabType = "studio" | "upcoming" | "past";
 // console.log("🟢 student.tsx loaded");
 
 export default function StudentDashboard() {
-  console.log("🎬 StudentDashboard component rendering");
-
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
+  const [mounted, setMounted] = useState(false);
   const [allClasses, setAllClasses] = useState<ClassItem[]>([]);
   const [enrolledClasses, setEnrolledClasses] = useState<ClassItem[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -154,7 +153,6 @@ export default function StudentDashboard() {
     useState<ClassItem | null>(null);
   const [showCreditModal, setShowCreditModal] = useState(false);
   const [creditRefreshTrigger, setCreditRefreshTrigger] = useState(0);
-  const [isMounted, setIsMounted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const showBookingSuccessModal = (
@@ -284,7 +282,7 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     console.log("🏗️ Component mount effect running");
-    setIsMounted(true);
+    setMounted(true);
   }, []);
 
   // Reset payment modal state when user changes
@@ -1104,6 +1102,25 @@ export default function StudentDashboard() {
     setShowPaymentModal(true);
   };
 
+  if (!mounted || !isLoaded) {
+    return (
+      <div className="mt-10 flex justify-center">
+        <LoadingSpinner text="Loading dashboard..." size="medium" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="mt-10 flex justify-center">
+        <div className="text-center">
+          <h2 className="mb-2 text-xl font-semibold">Please Sign In</h2>
+          <p>You need to be signed in to view your dashboard.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <DashboardContainer>
@@ -1125,7 +1142,7 @@ export default function StudentDashboard() {
         )}
         {/* Left Side - Class Schedule */}
         <ScheduleContainer>
-          {isMounted ? (
+          {mounted ? (
             <TabContainer>
               <TabHeader>
                 <TabButton
