@@ -413,6 +413,14 @@ const MembershipBox: React.FC = () => {
                 style={{ background: "#a0aec0", cursor: "not-allowed" }}>
                 Membership Cancelled
               </Button>
+              {status.is_active && (
+                <Button
+                  onClick={handlePurchase}
+                  disabled={loading}
+                  style={{ marginTop: 12 }}>
+                  Renew Membership
+                </Button>
+              )}
             </>
           ) : status.is_active ? (
             <Button
