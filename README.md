@@ -98,6 +98,7 @@ projectX/
 FLASK_ENV=development
 DATABASE_URL=sqlite:///instance/db.sqlite3
 STRIPE_SECRET_KEY=your-stripe-secret-key
+STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
 CLERK_SECRET_KEY=your-clerk-secret-key
 ```
 
@@ -107,6 +108,146 @@ CLERK_SECRET_KEY=your-clerk-secret-key
 NEXT_PUBLIC_API_URL=http://127.0.0.1:5000
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your-clerk-publishable-key
 ```
+
+## Stripe Setup & Testing
+
+### Initial Stripe Setup
+
+1. **Create a Stripe Account**
+
+   - Go to [stripe.com](https://stripe.com) and create an account
+   - Make sure you're in **Test Mode** (toggle in the dashboard)
+
+2. **Get Your API Keys**
+
+   - Go to **Developers → API keys** in your Stripe Dashboard
+   - Copy your **Publishable key** (starts with `pk_test_`)
+   - Copy your **Secret key** (starts with `sk_test_`)
+   - Add the secret key to your backend `.env` file
+
+3. **Install Stripe CLI**
+
+   ```bash
+   # macOS (using Homebrew)
+   brew install stripe/stripe-cli/stripe
+
+   # Or download from: https://github.com/stripe/stripe-cli/releases
+   ```
+
+### Setting Up Webhooks for Local Development
+
+1. **Login to Stripe CLI**
+
+   ```bash
+   stripe login
+   ```
+
+   This will open your browser to authenticate with your Stripe account.
+
+2. **Start Webhook Forwarding**
+
+   ```bash
+   stripe listen --forward-to localhost:5000/webhook/stripe
+   ```
+
+   You should see output like:
+
+   ```
+   > Ready! Your webhook signing secret is whsec_1234567890abcdef...
+   ```
+
+   **Copy this webhook secret** and add it to your backend `.env` file as `STRIPE_WEBHOOK_SECRET`.
+
+3. **Keep the webhook listener running** in a separate terminal while testing.
+
+### Testing Stripe Integration
+
+1. **Test Webhook Events**
+   In a new terminal, you can trigger test events:
+
+   ```bash
+   # Test a successful checkout session
+   stripe trigger checkout.session.completed
+
+   # Test a failed payment
+   stripe trigger payment_intent.payment_failed
+
+   # Test other events as needed
+   stripe trigger invoice.payment_succeeded
+   ```
+
+2. **Monitor Webhook Events**
+   The `stripe listen` command will show you:
+   - Incoming webhook events
+   - Success/failure status
+   - Request/response details
+
+### Troubleshooting Stripe Issues
+
+1. **API Key Expired Error**
+
+   ```
+   Error while authenticating with Stripe: Authorization failed, status=401
+   ```
+
+   **Solution**: Get a new API key from Stripe Dashboard → Developers → API keys
+
+2. **Webhook Not Receiving Events**
+
+   - Make sure `stripe listen` is running
+   - Check that your backend is running on port 5000
+   - Verify the webhook endpoint URL is correct
+
+3. **Webhook Secret Issues**
+   - If you get a new webhook secret, update your `.env` file
+   - Restart your Flask backend after changing environment variables
+
+### Production Webhook Setup
+
+For production, you'll need to:
+
+1. **Create a Webhook Endpoint** in Stripe Dashboard
+
+   - Go to **Developers → Webhooks**
+   - Click **"Add endpoint"**
+   - Set URL to your production domain: `https://yourdomain.com/webhook/stripe`
+   - Select events: `checkout.session.completed`
+   - Copy the signing secret for production
+
+2. **Update Environment Variables**
+   - Use production API keys (`sk_live_` instead of `sk_test_`)
+   - Use the production webhook secret
+
+### Common Stripe CLI Commands
+
+```bash
+# Login to Stripe
+stripe login
+
+# Listen for webhooks (development)
+stripe listen --forward-to localhost:5000/webhook/stripe
+
+# Trigger test events
+stripe trigger checkout.session.completed
+stripe trigger payment_intent.succeeded
+stripe trigger payment_intent.payment_failed
+
+# View webhook events
+stripe events list
+
+# Get help
+stripe help
+```
+
+### Stripe Test Cards
+
+Use these test card numbers for testing payments:
+
+- **Success**: `4242 4242 4242 4242`
+- **Decline**: `4000 0000 0000 0002`
+- **Requires Authentication**: `4000 0025 0000 3155`
+
+Any future expiry date and any 3-digit CVC will work.
 
 ## Testing
 
